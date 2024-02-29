@@ -1,11 +1,16 @@
+import random
+
 from PIL import Image
 from tilesmap import tiles_map
 from typing import Union, Literal
 from queue import Queue, PriorityQueue
-from random import randint
+from random import randint, shuffle
 from math import log
+from copy import deepcopy
 
 type Direction = Literal["n", "e", "s", "w"]
+
+type Corner = Literal["ul", "ur", "dl", "dr"]
 
 
 def mirror_direction(direction: Direction) -> Direction:
@@ -26,6 +31,10 @@ class TilesManager:
     @staticmethod
     def get_slots(tile_name: str, direction: Direction) -> set[str]:
         return {tile for tile in tiles_map[tile_name]["slots"][direction]}
+
+    @staticmethod
+    def get_empty_area(tile_name: str) -> list[Corner]:
+        return deepcopy(tiles_map[tile_name]["empty_area"])
 
     def get_total_entropy(self, tiles: set[str]) -> float:
         entropy = 0.0
@@ -50,6 +59,16 @@ class WFCCell:
         self.id = id
         self.tiles_manager = tiles_manager
         self.entropy = self.tiles_manager.get_total_entropy(self.allowed_tiles)
+        self.player = False
+
+    def __repr__(self):
+        return "{} ({}, {})".format(self.collapsed_tile, *self.position)
+
+    def has_player(self):
+        return self.player
+
+    def place_player(self):
+        self.player = True
 
     def is_collapsed(self) -> bool:
         return self.collapsed_tile is not None
@@ -100,34 +119,63 @@ class WFCGrid:
         self.size = size
         self.cells = cells
 
+    def cell_neighbours(self, cell: WFCCell) -> dict[Direction, WFCCell]:
+        """
+        Returns neighbours of cell keyed by their relative position to given cell
+        (i.e. where to find the given cell starting from that neighbour)
+        """
+        neighbours: dict[Direction, WFCCell] = {}
+        if cell.position[1] > 0:
+            neighbours["n"] = self.cells[cell.position[0]][cell.position[1]-1]
+        if cell.position[0] < self.size-1:
+            neighbours["e"] = self.cells[cell.position[0]+1][cell.position[1]]
+        if cell.position[1] < self.size-1:
+            neighbours["s"] = self.cells[cell.position[0]][cell.position[1]+1]
+        if cell.position[0] > 0:
+            neighbours["w"] = self.cells[cell.position[0]-1][cell.position[1]]
+
+        return neighbours
+
 
 class WFCGridGenerator:
-    def __init__(self):
-        self.tiles_manager = TilesManager()
-        self.size = 0
-        self.cells: [[WFCCell]] = []
+    def __init__(self, tiles_manager: TilesManager):
+        self.tiles_manager = tiles_manager
+        self.grid: Union[WFCGrid, None] = None
 
-    def generate(self, size: int) -> [[WFCCell]]:
-        while not self.__generate(size):
+    def generate(self, size: int, players_count: int) -> [[WFCCell]]:
+        possible_positions = [(x, y) for x in range(size) for y in range(size)]
+        random.shuffle(possible_positions)
+        while not self.__generate(size, possible_positions[:players_count]):
             print("contradiction, trying again")
             continue
 
-        return WFCGrid(size, self.cells)
+        return self.grid
 
-    def __generate(self, size):
-        self.size = size
-        self.cells = [[] for _ in range(size)]
+    def __generate(self, size, players_positions: [tuple[int, int]]):
+        size = size
+        cells = [[] for _ in range(size)]
         count = 0
         for i in range(size):
             for j in range(size):
-                self.cells[i].append(WFCCell((i, j), count, self.tiles_manager))
+                cells[i].append(WFCCell((i, j), count, self.tiles_manager))
                 count += 1
 
-        collapsed_count = 0
-        pq: PriorityQueue[WFCCell] = PriorityQueue()
-        pq.put(self.cells[randint(0, self.size-1)][randint(0, self.size-1)])
+        self.grid = WFCGrid(size, cells)
 
-        while collapsed_count < self.size ** 2:
+        collapsed_count = len(players_positions)
+        pq: PriorityQueue[WFCCell] = PriorityQueue()
+        to_fix = []
+        for x, y in players_positions:
+            cell = cells[y][x]
+            cell.set_collapsed("w")
+            cell.place_player()
+            to_fix.append(cell)
+
+        self.__fix_cells(to_fix)
+
+        pq.put(list(filter(lambda c: not c.is_collapsed(), sorted([c for cs in cells for c in cs])))[0])
+
+        while collapsed_count < self.grid.size ** 2:
             cell = pq.get()
             if cell.is_collapsed():
                 continue
@@ -152,7 +200,8 @@ class WFCGridGenerator:
         unfinished_cell: WFCCell
         while not pending_fix_queue.empty():
             unfinished_cell = pending_fix_queue.get()
-            for direction, neighbour in self.__cell_neighbours(unfinished_cell).items():
+            neighbours = self.grid.cell_neighbours(unfinished_cell).items() if self.grid is not None else []
+            for direction, neighbour in neighbours:
                 if neighbour.is_collapsed():
                     continue
                 if neighbour.update_allowed_tiles(unfinished_cell.get_slots(direction)):
@@ -160,44 +209,86 @@ class WFCGridGenerator:
                     updated.add(neighbour)
         return updated
 
-    def __cell_neighbours(self, cell: WFCCell) -> dict[Direction, WFCCell]:
-        """
-        Returns neighbours of cell keyed by their relative position to given cell
-        (i.e. where to find the given cell starting from that neighbour)
-        """
-        neighbours: dict[Direction, WFCCell] = {}
-        if cell.position[1] > 0:
-            neighbours["n"] = self.cells[cell.position[0]][cell.position[1]-1]
-        if cell.position[0] < self.size-1:
-            neighbours["e"] = self.cells[cell.position[0]+1][cell.position[1]]
-        if cell.position[1] < self.size-1:
-            neighbours["s"] = self.cells[cell.position[0]][cell.position[1]+1]
-        if cell.position[0] > 0:
-            neighbours["w"] = self.cells[cell.position[0]-1][cell.position[1]]
-
-        return neighbours
-
 
 class WFCMap:
-    def __init__(self, cell_width: int, generator: WFCGridGenerator):
+    def __init__(self, cell_width: int, generator: WFCGridGenerator, tiles_manager: TilesManager):
         self.generator = generator
+        self.tiles_manager = tiles_manager
         self.cell_width = cell_width
 
-    def build_image_grid(self, size: int):
-        grid = self.generator.generate(size)
+    def build_image_grid(self, size: int, players_count):
+        grid = self.generator.generate(size, players_count)
+        graph = self.__get_graph(grid)
         tiles = Image.open("tiles.png")
+        player = Image.open("player.png")
         result = Image.new("RGB", size=(size*self.cell_width, size*self.cell_width))
         for i in range(size):
             for j in range(size):
-                result.paste(
-                    tiles
-                    .crop(tiles_map[grid.cells[i][j].collapsed_tile]["coords"])
-                    .resize((self.cell_width, self.cell_width)),
-                    (grid.cells[i][j].position[0]*self.cell_width, grid.cells[i][j].position[1]*self.cell_width)
-                )
+                position = grid.cells[i][j].position[0]*self.cell_width, grid.cells[i][j].position[1]*self.cell_width
+                if grid.cells[i][j].has_player():
+                    result.paste(player.resize((self.cell_width, self.cell_width)), position)
+                else:
+                    result.paste(
+                        tiles
+                        .crop(tiles_map[grid.cells[i][j].collapsed_tile]["coords"])
+                        .resize((self.cell_width, self.cell_width)),
+                        position
+                    )
         result.show()
+
+    def __get_graph(self, grid: WFCGrid):
+        graph = []
+        nodes_count = 0
+        mappings: dict[WFCCell, dict[Corner, int]] = {}
+        all_cells = [c for cs in grid.cells for c in cs]
+        cell: WFCCell
+        for cell in all_cells:
+            mappings[cell] = {}
+            for corner in self.tiles_manager.get_empty_area(cell.collapsed_tile):
+                mappings[cell][corner] = nodes_count
+                graph.append([])
+                nodes_count += 1
+
+        for cell in all_cells:
+            empty_area = self.tiles_manager.get_empty_area(cell.collapsed_tile)
+            if len(empty_area) <= 1:
+                continue
+            for corner in empty_area:
+                for other_corner in empty_area:
+                    if corner == other_corner:
+                        continue
+                    graph[mappings[cell][corner]].append(mappings[cell][other_corner])
+
+        for cell in all_cells:
+            cell_empty_area = tiles_manager.get_empty_area(cell.collapsed_tile)
+            for direction, neighbour in grid.cell_neighbours(cell).items():
+                neighbour_empty_area = tiles_manager.get_empty_area(neighbour.collapsed_tile)
+                if direction == "n":
+                    if "dl" in neighbour_empty_area and "ul" in cell_empty_area:
+                        graph[mappings[cell]["ul"]].append(mappings[neighbour]["dl"])
+                    if "dr" in neighbour_empty_area and "ur" in cell_empty_area:
+                        graph[mappings[cell]["ur"]].append(mappings[neighbour]["dr"])
+                elif direction == "e":
+                    if "ul" in neighbour_empty_area and "ur" in cell_empty_area:
+                        graph[mappings[cell]["ur"]].append(mappings[neighbour]["ul"])
+                    if "dl" in neighbour_empty_area and "dr" in cell_empty_area:
+                        graph[mappings[cell]["dr"]].append(mappings[neighbour]["dl"])
+                elif direction == "s":
+                    if "ul" in neighbour_empty_area and "dl" in cell_empty_area:
+                        graph[mappings[cell]["dl"]].append(mappings[neighbour]["ul"])
+                    if "ur" in neighbour_empty_area and "dr" in cell_empty_area:
+                        graph[mappings[cell]["dr"]].append(mappings[neighbour]["ur"])
+                elif direction == "w":
+                    if "ur" in neighbour_empty_area and "ul" in cell_empty_area:
+                        graph[mappings[cell]["ul"]].append(mappings[neighbour]["ur"])
+                    if "dr" in neighbour_empty_area and "dl" in cell_empty_area:
+                        graph[mappings[cell]["dl"]].append(mappings[neighbour]["dr"])
+
+        return graph
 
 
 if __name__ == "__main__":
-    wfc_map = WFCMap(32, WFCGridGenerator())
-    wfc_map.build_image_grid(40)
+    tiles_manager = TilesManager()
+    generator = WFCGridGenerator(tiles_manager)
+    wfc_map = WFCMap(64, generator, tiles_manager)
+    wfc_map.build_image_grid(20, 3)

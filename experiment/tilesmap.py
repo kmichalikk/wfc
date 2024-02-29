@@ -1,7 +1,7 @@
 tiles_map = {
     "w": {
         "coords": [32, 32, 96, 96],
-        "weight": 30,
+        "weight": 10,
         "slots": {
             "n": ["w", "w-ur", "w-u", "w-ul"],
             "e": ["w", "w-dr", "w-ur", "w-r"],
@@ -85,7 +85,7 @@ tiles_map = {
             "s": ["w-urdl", "w-ur", "r-ul", "w-r"],
             "w": ["w-u", "r-dr", "w-urdl", "w-ur"]
         },
-        "empty_area": ["ul", "ur"]
+        "empty_area": ["dl"]
     },
     "w-dl": {
         "coords": [32, 288, 96, 352],
@@ -129,7 +129,7 @@ tiles_map = {
             "s": ["r", "r-dl", "r-dr", "w-u"],
             "w": ["w-d", "r-ur", "w-uldr", "w-dr"]
         },
-        "empty_area": ["ur", "dl", "dr"]
+        "empty_area": ["ul"]
     },
     "w-l": {
         "coords": [32, 416, 96, 480],
@@ -151,7 +151,7 @@ tiles_map = {
             "s": ["r", "r-dl", "r-dr", "w-u"],
             "w": ["r", "r-dl", "r-ul", "w-r"]
         },
-        "empty_area": ["ul", "dl", "dr"]
+        "empty_area": ["ur"]
     },
     "r-dr": {
         "coords": [288, 416, 352, 480],
@@ -162,7 +162,7 @@ tiles_map = {
             "s": ["w-l", "w-uldr", "w-ul", "r-ur"],
             "w": ["r", "w-r", "r-ul", "r-dl"]
         },
-        "empty_area": ["ul", "ur", "dl"]
+        "empty_area": ["dr"]
     },
     "r": {
         "coords": [416, 416, 480, 480],
