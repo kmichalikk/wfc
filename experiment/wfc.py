@@ -118,6 +118,7 @@ class WFCGrid:
     def __init__(self, size, cells):
         self.size = size
         self.cells = cells
+        self.players_cells: [WFCCell] = []
 
     def cell_neighbours(self, cell: WFCCell) -> dict[Direction, WFCCell]:
         """
@@ -144,7 +145,7 @@ class WFCGridGenerator:
 
     def generate(self, size: int, players_count: int) -> [[WFCCell]]:
         possible_positions = [(x, y) for x in range(size) for y in range(size)]
-        random.shuffle(possible_positions)
+        shuffle(possible_positions)
         while not self.__generate(size, possible_positions[:players_count]):
             print("contradiction, trying again")
             continue
@@ -169,13 +170,14 @@ class WFCGridGenerator:
             cell = cells[y][x]
             cell.set_collapsed("w")
             cell.place_player()
+            self.grid.players_cells.append(cell)
             to_fix.append(cell)
 
         self.__fix_cells(to_fix)
 
         pq.put(list(filter(lambda c: not c.is_collapsed(), sorted([c for cs in cells for c in cs])))[0])
 
-        while collapsed_count < self.grid.size ** 2:
+        while not pq.empty():
             cell = pq.get()
             if cell.is_collapsed():
                 continue
@@ -218,7 +220,14 @@ class WFCMap:
 
     def build_image_grid(self, size: int, players_count):
         grid = self.generator.generate(size, players_count)
-        graph = self.__get_graph(grid)
+        graph, mapping = self.__get_graph(grid)
+        players_cells_indexes = list(map(lambda c: mapping[c]["ul"], grid.players_cells))
+        while not self.__bfs_check_players_reachability(players_cells_indexes, graph):
+            print("unreachable player")
+            grid = self.generator.generate(size, players_count)
+            graph, mapping = self.__get_graph(grid)
+            players_cells_indexes = list(map(lambda c: mapping[c]["ul"], grid.players_cells))
+
         tiles = Image.open("tiles.png")
         player = Image.open("player.png")
         result = Image.new("RGB", size=(size*self.cell_width, size*self.cell_width))
@@ -236,7 +245,25 @@ class WFCMap:
                     )
         result.show()
 
-    def __get_graph(self, grid: WFCGrid):
+    def __bfs_check_players_reachability(self, players_cells_indexes, graph) -> True:
+        if len(players_cells_indexes) < 2:
+            return True
+
+        queue = Queue()
+        visited = [False for _ in range(len(graph))]
+        queue.put(players_cells_indexes[0])
+        visited[players_cells_indexes[0]] = True
+        while not queue.empty():
+            u = queue.get()
+            for v in graph[u]:
+                if visited[v]:
+                    continue
+                visited[v] = True
+                queue.put(v)
+
+        return all(map(lambda p: visited[p], players_cells_indexes))
+
+    def __get_graph(self, grid: WFCGrid) -> ([[int]], dict[WFCCell, dict[Corner, int]]):
         graph = []
         nodes_count = 0
         mappings: dict[WFCCell, dict[Corner, int]] = {}
@@ -284,7 +311,7 @@ class WFCMap:
                     if "dr" in neighbour_empty_area and "dl" in cell_empty_area:
                         graph[mappings[cell]["dl"]].append(mappings[neighbour]["dr"])
 
-        return graph
+        return graph, mappings
 
 
 if __name__ == "__main__":
