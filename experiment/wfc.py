@@ -96,18 +96,33 @@ class WFCCell:
 
 
 class WFCGrid:
-    def __init__(self, size: int, cell_width: int):
+    def __init__(self, size, cells):
         self.size = size
-        self.cell_width = cell_width
-        self.cells: [[WFCCell]] = [[] for _ in range(size)]
+        self.cells = cells
+
+
+class WFCGridGenerator:
+    def __init__(self):
         self.tiles_manager = TilesManager()
+        self.size = 0
+        self.cells: [[WFCCell]] = []
+
+    def generate(self, size: int) -> [[WFCCell]]:
+        while not self.__generate(size):
+            print("contradiction, trying again")
+            continue
+
+        return WFCGrid(size, self.cells)
+
+    def __generate(self, size):
+        self.size = size
+        self.cells = [[] for _ in range(size)]
         count = 0
         for i in range(size):
             for j in range(size):
                 self.cells[i].append(WFCCell((i, j), count, self.tiles_manager))
                 count += 1
 
-    def generate(self):
         collapsed_count = 0
         pq: PriorityQueue[WFCCell] = PriorityQueue()
         pq.put(self.cells[randint(0, self.size-1)][randint(0, self.size-1)])
@@ -162,25 +177,27 @@ class WFCGrid:
 
         return neighbours
 
-    def build_image(self):
+
+class WFCMap:
+    def __init__(self, cell_width: int, generator: WFCGridGenerator):
+        self.generator = generator
+        self.cell_width = cell_width
+
+    def build_image_grid(self, size: int):
+        grid = self.generator.generate(size)
         tiles = Image.open("tiles.png")
-        result = Image.new("RGB", size=(self.size*self.cell_width, self.size*self.cell_width))
-        for i in range(self.size):
-            for j in range(self.size):
+        result = Image.new("RGB", size=(size*self.cell_width, size*self.cell_width))
+        for i in range(size):
+            for j in range(size):
                 result.paste(
                     tiles
-                    .crop(tiles_map[self.cells[i][j].collapsed_tile]["coords"])
+                    .crop(tiles_map[grid.cells[i][j].collapsed_tile]["coords"])
                     .resize((self.cell_width, self.cell_width)),
-                    (self.cells[i][j].position[0]*self.cell_width, self.cells[i][j].position[1]*self.cell_width)
+                    (grid.cells[i][j].position[0]*self.cell_width, grid.cells[i][j].position[1]*self.cell_width)
                 )
         result.show()
 
 
 if __name__ == "__main__":
-    size = 40
-    grid = WFCGrid(size, 32)
-    while not grid.generate():
-        print("miss!")
-        grid = WFCGrid(size, 32)
-
-    grid.build_image()
+    wfc_map = WFCMap(32, WFCGridGenerator())
+    wfc_map.build_image_grid(40)
