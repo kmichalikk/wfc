@@ -1,7 +1,7 @@
 tiles_map = {
     "w": {
         "coords": [32, 32, 96, 96],
-        "weight": 1,
+        "weight": 20,
         "slots": {
             "n": ["w", "w-ur", "w-u", "w-ul"],
             "e": ["w", "w-dr", "w-ur", "w-r"],
@@ -166,7 +166,7 @@ tiles_map = {
     },
     "r": {
         "coords": [416, 416, 480, 480],
-        "weight": 30,
+        "weight": 1,
         "slots": {
             "n": ["r", "r-ul", "r-ur", "w-d"],
             "e": ["r", "r-ur", "r-dr", "w-l"],
