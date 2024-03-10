@@ -1,6 +1,6 @@
 from copy import deepcopy
 from math import log
-from random import randint
+import numpy as np
 
 from experiment.tiles.tilesmap import tiles_map
 from experiment.typings import Direction, Corner
@@ -29,8 +29,6 @@ class TilesManager:
 
     @staticmethod
     def draw_random_tile(choices: set[str]) -> str:
-        list = []
-        for tile in choices:
-            for _ in range(tiles_map[tile]["weight"]):
-                list.append(tile)
-        return list[randint(0, len(list)-1)]
+        tile_weights = [tiles_map[tile]["weight"] for tile in choices]
+        random_index = np.random.choice(len(choices), p=(tile_weights / np.sum(tile_weights)))
+        return list(choices)[random_index]
