@@ -18,8 +18,28 @@ class TilesManager:
         return {tile for tile in tiles_map[tile_name]["slots"][direction]}
 
     @staticmethod
-    def get_empty_area(tile_name: str) -> list[Corner]:
-        return deepcopy(tiles_map[tile_name]["empty_area"])
+    def get_neighbours(tile_name: str, id: int, size: int) -> [int]:
+        row = id // size
+        neighbours = []
+        for direction in tiles_map[tile_name]["neighbours"]:
+            match direction:
+                case "n":
+                    neighbours.append(id - size)
+                case "e":
+                    neighbours.append(id + 1)
+                case "s":
+                    neighbours.append(id + size)
+                case "w":
+                    neighbours.append(id - 1)
+
+        if id == (row + 1) * size - 1:
+            neighbours = list(filter(lambda x: 0 <= x < size * size and x != id + 1, neighbours))
+        elif id == row * size:
+            neighbours = list(filter(lambda x: 0 <= x < size * size and x != id - 1, neighbours))
+        else:
+            neighbours = list(filter(lambda x: 0 <= x < size * size, neighbours))
+
+        return neighbours
 
     def get_total_entropy(self, tiles: set[str]) -> float:
         entropy = 0.0

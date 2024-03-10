@@ -8,7 +8,7 @@ tiles_map = {
             "s": ["w", "w-dr", "w-d", "w-dl"],
             "w": ["w", "w-dl", "w-ul", "w-l"],
         },
-        "empty_area": ["ul", "ur", "dl", "dr"]
+        "neighbours": ["n", "e", "s", "w"]
     },
     "w-dr": {
         "coords": [160, 32, 224, 96],
@@ -19,7 +19,7 @@ tiles_map = {
             "s": ["w-ur", "r-ul", "w-urdl", "w-r"],
             "w": ["w", "w-ul", "w-dl", "w-l"]
         },
-        "empty_area": ["ul", "ur", "dl"]
+        "neighbours": ["n", "e", "s", "w"]
     },
     "w-ur": {
         "coords": [288, 32, 352, 96],
@@ -30,7 +30,7 @@ tiles_map = {
             "s": ["w", "w-dl", "w-d", "w-dr"],
             "w": ["w", "w-ul", "w-dr", "w-l"],
         },
-        "empty_area": ["ul", "dl", "dr"]
+        "neighbours": ["n", "e", "s", "w"]
     },
     "w-r": {
         "coords": [416, 32, 480, 96],
@@ -41,7 +41,7 @@ tiles_map = {
             "s": ["w-ur", "w-urdl", "w-r", "r-ul"],
             "w": ["w", "w-dl", "w-ul", "w-l"]
         },
-        "empty_area": ["ul", "dl"]
+        "neighbours": ["n", "s", "w"]
     },
     "w-ul": {
         "coords": [32, 160, 96, 224],
@@ -52,7 +52,7 @@ tiles_map = {
             "s": ["w", "w-dl", "w-dr", "w-d"],
             "w": ["w-ur", "w-urdl", "w-u", "r-dr"]
         },
-        "empty_area": ["ur", "dl", "dr"]
+        "neighbours": ["n", "e", "s", "w"]
     },
     "w-uldr": {
         "coords": [160, 160, 224, 224],
@@ -63,7 +63,7 @@ tiles_map = {
             "s": ["w-urdl", "w-r", "w-ur", "r-ul"],
             "w": ["w-u", "w-ur", "r-dr", "w-urdl"]
         },
-        "empty_area": ["ur", "dl"]
+        "neighbours": ["n", "e", "s", "w"]
     },
     "w-u": {
         "coords": [288, 160, 352, 224],
@@ -74,7 +74,7 @@ tiles_map = {
             "s": ["w", "w-dl", "w-d", "w-dr"],
             "w": ["w-urdl", "w-ur", "w-u", "w-dr"]
         },
-        "empty_area": ["dl", "dr"]
+        "neighbours": ["e", "s", "w"]
     },
     "r-dl": {
         "coords": [416, 160, 480, 224],
@@ -85,7 +85,7 @@ tiles_map = {
             "s": ["w-urdl", "w-ur", "r-ul", "w-r"],
             "w": ["w-u", "r-dr", "w-urdl", "w-ur"]
         },
-        "empty_area": ["dl"]
+        "neighbours": ["e", "s"]
     },
     "w-dl": {
         "coords": [32, 288, 96, 352],
@@ -96,7 +96,7 @@ tiles_map = {
             "s": ["w-ul", "w-uldr", "w-l", "r-ur"],
             "w": ["w-dr", "w-d", "w-uldr", "r-ur"]
         },
-        "empty_area": ["ul", "ur", "dr"]
+        "neighbours": ["n", "e", "s", "w"]
     },
     "w-d": {
         "coords": [160, 288, 224, 352],
@@ -107,7 +107,7 @@ tiles_map = {
             "s": ["r", "r-dl", "r-dr", "w-u"],
             "w": ["w-dr", "w-d", "r-ur", "w-uldr"]
         },
-        "empty_area": ["ul", "ur"]
+        "neighbours": ["n", "e", "w"]
     },
     "w-urdl": {
         "coords": [288, 288, 352, 352],
@@ -118,7 +118,7 @@ tiles_map = {
             "s": ["w-l", "r-ur", "w-uldr", "w-ul"],
             "w": ["w-d", "r-ur", "w-dr", "w-uldr"]
         },
-        "empty_area": ["ul", "dr"]
+        "neighbours": ["n", "e", "s", "w"]
     },
     "r-ul": {
         "coords": [416, 288, 480, 352],
@@ -129,7 +129,7 @@ tiles_map = {
             "s": ["r", "r-dl", "r-dr", "w-u"],
             "w": ["w-d", "r-ur", "w-uldr", "w-dr"]
         },
-        "empty_area": ["ul"]
+        "neighbours": ["n", "w"]
     },
     "w-l": {
         "coords": [32, 416, 96, 480],
@@ -140,7 +140,7 @@ tiles_map = {
             "s": ["w-l", "w-ul", "w-uldr", "r-ur"],
             "w": ["r", "r-ul", "r-dl", "w-r"]
         },
-        "empty_area": ["ur", "dr"]
+        "neighbours": ["n", "e", "s"]
     },
     "r-ur": {
         "coords": [160, 416, 224, 480],
@@ -151,7 +151,7 @@ tiles_map = {
             "s": ["r", "r-dl", "r-dr", "w-u"],
             "w": ["r", "r-dl", "r-ul", "w-r"]
         },
-        "empty_area": ["ur"]
+        "neighbours": ["n", "e"]
     },
     "r-dr": {
         "coords": [288, 416, 352, 480],
@@ -162,7 +162,7 @@ tiles_map = {
             "s": ["w-l", "w-uldr", "w-ul", "r-ur"],
             "w": ["r", "w-r", "r-ul", "r-dl"]
         },
-        "empty_area": ["dr"]
+        "neighbours": ["e", "s"]
     },
     "r": {
         "coords": [416, 416, 480, 480],
@@ -173,6 +173,6 @@ tiles_map = {
             "s": ["r", "r-dl", "r-dr", "w-u"],
             "w": ["r", "r-dl", "r-ul", "w-r"]
         },
-        "empty_area": []
+        "neighbours": []
     }
 }
