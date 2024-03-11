@@ -7,6 +7,7 @@ with open('C:\\Users\\gabul\\Documents\\Programowanie\\wfc\\experiment\\tiles\\s
 
     for tile in first_row:
         if len(tile) > 1:
+            print(tile)
             tiles_map[tile.lstrip()] = {
                 "weight": 0,
                 "slots": {
@@ -17,8 +18,6 @@ with open('C:\\Users\\gabul\\Documents\\Programowanie\\wfc\\experiment\\tiles\\s
                 },
                 "neighbours": []
             }
-
-    print(tiles_map.keys())
 
     for row in reader:
         for i in range(1, len(row)):
@@ -66,7 +65,6 @@ with open('C:\\Users\\gabul\\Documents\\Programowanie\\wfc\\experiment\\tiles\\s
                 tiles_map[tile]["neighbours"].extend([])
 
         for tile in tiles_map:
-            if "empty" not in tile and "plant" not in tile:
                 if tile[-1] == "1":
                     tiles_map[tile[:-1]+"2"]["slots"]["s"] = tiles_map[tile]["slots"]["e"]
                     tiles_map[tile[:-1] + "2"]["slots"]["e"] = tiles_map[tile]["slots"]["n"]
