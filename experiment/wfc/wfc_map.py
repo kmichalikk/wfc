@@ -24,7 +24,16 @@ class WFCMap:
         result = []
         for i in range(size):
             for j in range(size):
-                result.append({"node_path": grid.cells[i][j].collapsed_tile[:-1]+"1", "pos": (i*5, 0, j*5), "heading": int(grid.cells[i][j].collapsed_tile[-1])})
+                heading = 0
+                match grid.cells[i][j].collapsed_tile[-1]:
+                    case "2":
+                        heading = -90
+                    case "3":
+                        heading = 180
+                    case "4":
+                        heading = 90
+                result.append({"node_path": grid.cells[i][j].collapsed_tile[:-1]+"1",
+                               "pos": (i*5, 0, j*5), "heading": heading})
         return result
 
     @staticmethod
