@@ -37,7 +37,7 @@ class WFCGridGenerator:
         to_fix = []
         for x, y in players_positions:
             cell = cells[y][x]
-            cell.set_collapsed("w")
+            cell.set_collapsed("empty_1")
             cell.place_player()
             self.grid.players_cells.append(cell)
             to_fix.append(cell)

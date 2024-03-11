@@ -1,20 +1,15 @@
 from queue import Queue
 
-from PIL import Image
 
 from experiment.tiles.tiles_manager import TilesManager
-from experiment.tiles.tilesmap import tiles_map
-from experiment.typings import Corner
-from experiment.wfc.wfc_cell import WFCCell
 from experiment.wfc.wfc_generator import WFCGridGenerator
 from experiment.wfc.wfc_grid import WFCGrid
 
 
 class WFCMap:
-    def __init__(self, cell_width: int, generator: WFCGridGenerator, tiles_manager: TilesManager):
+    def __init__(self, generator: WFCGridGenerator, tiles_manager: TilesManager):
         self.generator = generator
         self.tiles_manager = tiles_manager
-        self.cell_width = cell_width
 
     def build_image_grid(self, size: int, players_count):
         grid = self.generator.generate(size, players_count)
@@ -26,22 +21,11 @@ class WFCMap:
             graph = self.__get_graph(grid)
             players_cells_indexes = [i * size + j for i, j in [grid.players_cells]]
 
-        tiles = Image.open("tiles.png")
-        player = Image.open("player.png")
-        result = Image.new("RGB", size=(size*self.cell_width, size*self.cell_width))
+        result = []
         for i in range(size):
             for j in range(size):
-                position = grid.cells[i][j].position[0]*self.cell_width, grid.cells[i][j].position[1]*self.cell_width
-                if grid.cells[i][j].has_player():
-                    result.paste(player.resize((self.cell_width, self.cell_width)), position)
-                else:
-                    result.paste(
-                        tiles
-                        .crop(tiles_map[grid.cells[i][j].collapsed_tile]["coords"])
-                        .resize((self.cell_width, self.cell_width)),
-                        position
-                    )
-        result.show()
+                result.append({"node_path": grid.cells[i][j].collapsed_tile[:-1]+"1", "pos": (i*5, 0, j*5), "heading": int(grid.cells[i][j].collapsed_tile[-1])})
+        return result
 
     @staticmethod
     def __bfs_check_players_reachability(players_cells_indexes, graph) -> True:

@@ -3,7 +3,7 @@ from math import log
 import numpy as np
 
 from experiment.tiles.tilesmap import tiles_map
-from experiment.typings import Direction, Corner
+from experiment.typings import Direction
 
 
 class TilesManager:
