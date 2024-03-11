@@ -18,10 +18,14 @@ with open('C:\\Users\\gabul\\Documents\\Programowanie\\wfc\\experiment\\tiles\\s
                 "neighbours": []
             }
 
+    print(tiles_map.keys())
+
     for row in reader:
         for i in range(1, len(row)):
             if row[i] == "1":
+                print(row[0][:-2])
                 tiles_map[row[0].lstrip()[:-2]]["slots"][row[0][-1]].add(first_row[i].lstrip())
+
 
     for tile in tiles_map:
         if "empty" in tile:
@@ -48,9 +52,9 @@ with open('C:\\Users\\gabul\\Documents\\Programowanie\\wfc\\experiment\\tiles\\s
                 tiles_map[tile]["neighbours"].extend(["n", "e", "s", "w"])
             case "wall_slim_tip_1":
                 tiles_map[tile]["neighbours"].extend(["n", "e", "s", "w"])
-            case "wall_straight_1":
+            case "wall_straight_1_1":
                 tiles_map[tile]["neighbours"].extend(["e", "s", "w"])
-            case "wall_straight_2":
+            case "wall_straight_2_1":
                 tiles_map[tile]["neighbours"].extend(["e", "s", "w"])
             case "water_concave_1":
                 tiles_map[tile]["neighbours"].extend(["n", "w"])
