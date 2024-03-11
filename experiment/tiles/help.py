@@ -1,12 +1,13 @@
 import csv
 
 tiles_map = {}
-with open('slots.csv', 'r') as file:
+with open('C:\\Users\\gabul\\Documents\\Programowanie\\wfc\\experiment\\tiles\\slots.csv', 'r') as file:
     reader = csv.reader(file)
     first_row = next(reader)
+
     for tile in first_row:
         if len(tile) > 1:
-            tiles_map[tile.lstrip()[:-2]] = {
+            tiles_map[tile.lstrip()] = {
                 "weight": 0,
                 "slots": {
                     "n": set(),
@@ -16,9 +17,11 @@ with open('slots.csv', 'r') as file:
                 },
                 "neighbours": []
             }
+
     for row in reader:
         for i in range(1, len(row)):
-            tiles_map[row[0].lstrip()[:-2]]["slots"][row[0][-1]].add(first_row[i].lstrip()[:-2])
+            if row[i] == "1":
+                tiles_map[row[0].lstrip()[:-2]]["slots"][row[0][-1]].add(first_row[i].lstrip())
 
     for tile in tiles_map:
         if "empty" in tile:
@@ -58,5 +61,39 @@ with open('slots.csv', 'r') as file:
             case _:
                 tiles_map[tile]["neighbours"].extend([])
 
-    for tile in tiles_map:
-        print(tile, " ", tiles_map[tile])
+        for tile in tiles_map:
+            if "empty" not in tile and "plant" not in tile:
+                if tile[-1] == "1":
+                    tiles_map[tile[:-1]+"2"]["slots"]["s"] = tiles_map[tile]["slots"]["e"]
+                    tiles_map[tile[:-1] + "2"]["slots"]["e"] = tiles_map[tile]["slots"]["n"]
+                    tiles_map[tile[:-1] + "2"]["slots"]["n"] = tiles_map[tile]["slots"]["w"]
+                    tiles_map[tile[:-1] + "2"]["slots"]["w"] = tiles_map[tile]["slots"]["s"]
+                    tiles_map[tile[:-1] + "3"]["slots"]["s"] = tiles_map[tile]["slots"]["n"]
+                    tiles_map[tile[:-1] + "3"]["slots"]["e"] = tiles_map[tile]["slots"]["w"]
+                    tiles_map[tile[:-1] + "3"]["slots"]["n"] = tiles_map[tile]["slots"]["s"]
+                    tiles_map[tile[:-1] + "3"]["slots"]["w"] = tiles_map[tile]["slots"]["e"]
+                    tiles_map[tile[:-1] + "4"]["slots"]["s"] = tiles_map[tile]["slots"]["w"]
+                    tiles_map[tile[:-1] + "4"]["slots"]["e"] = tiles_map[tile]["slots"]["s"]
+                    tiles_map[tile[:-1] + "4"]["slots"]["n"] = tiles_map[tile]["slots"]["e"]
+                    tiles_map[tile[:-1] + "4"]["slots"]["w"] = tiles_map[tile]["slots"]["n"]
+
+                    if tiles_map[tile]["neighbours"] == ["n", "e", "s", "w"]:
+                        tiles_map[tile[:-1]+"2"]["neighbours"] = ["n", "e", "s", "w"]
+                        tiles_map[tile[:-1] + "3"]["neighbours"] = ["n", "e", "s", "w"]
+                        tiles_map[tile[:-1] + "4"]["neighbours"] = ["n", "e", "s", "w"]
+                    if tiles_map[tile]["neighbours"] == ["e", "s"]:
+                        tiles_map[tile[:-1] + "2"]["neighbours"] = ["s", "w"]
+                        tiles_map[tile[:-1] + "3"]["neighbours"] = ["w", "n"]
+                        tiles_map[tile[:-1] + "4"]["neighbours"] = ["n", "e"]
+                    if tiles_map[tile]["neighbours"] == ["e", "s", "w"]:
+                        tiles_map[tile[:-1] + "2"]["neighbours"] = ["s", "w", "n"]
+                        tiles_map[tile[:-1] + "3"]["neighbours"] = ["w", "n", "s"]
+                        tiles_map[tile[:-1] + "4"]["neighbours"] = ["n", "e", "s"]
+                    if tiles_map[tile]["neighbours"] == ["n", "w"]:
+                        tiles_map[tile[:-1] + "2"]["neighbours"] = ["e", "n"]
+                        tiles_map[tile[:-1] + "3"]["neighbours"] = ["s", "e"]
+                        tiles_map[tile[:-1] + "4"]["neighbours"] = ["w", "n"]
+print("tiles_map={")
+for tile in tiles_map:
+    print("'"+tile.lstrip().rstrip()+"':",tiles_map[tile],",")
+print("}")
