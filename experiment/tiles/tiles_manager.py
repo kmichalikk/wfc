@@ -24,13 +24,13 @@ class TilesManager:
         for direction in tiles_map[tile_name]["neighbours"]:
             match direction:
                 case "n":
-                    neighbours.append(id - size)
-                case "e":
                     neighbours.append(id + 1)
-                case "s":
+                case "e":
                     neighbours.append(id + size)
-                case "w":
+                case "s":
                     neighbours.append(id - 1)
+                case "w":
+                    neighbours.append(id - size)
 
         if id == (row + 1) * size - 1:
             neighbours = list(filter(lambda x: 0 <= x < size * size and x != id + 1, neighbours))

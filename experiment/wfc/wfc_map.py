@@ -33,7 +33,7 @@ class WFCMap:
                     case "4":
                         heading = 90
                 result.append({"node_path": grid.cells[i][j].collapsed_tile[:-1]+"1",
-                               "pos": (i*5, 0, j*5), "heading": heading})
+                               "pos": (i*2, j*2, 0), "heading": heading})
         return result
 
     @staticmethod
@@ -57,8 +57,8 @@ class WFCMap:
 
     def __get_graph(self, grid: WFCGrid) -> [[int]]:
         graph = [[] for _ in range(grid.size * grid.size)]
-        for j in range(grid.size):
-            for i in range(grid.size):
+        for i in range(grid.size):
+            for j in range(grid.size):
                 id = grid.cells[i][j].id
                 graph[id].extend(self.tiles_manager.get_neighbours(grid.cells[i][j].collapsed_tile, id, grid.size))
         return graph

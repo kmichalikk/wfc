@@ -4,6 +4,7 @@ import panda3d.core as p3d
 from experiment.wfc_starter import start_wfc
 from src.tiles.TileNodePathFactory import TileNodePathFactory
 
+
 class Game(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
@@ -20,11 +21,11 @@ class Game(ShowBase):
 
         # add lighting
         point_light_node = self.render.attach_new_node(p3d.PointLight("light"))
-        point_light_node.set_pos(0, 100, 0)
+        point_light_node.set_pos(0, -10, 10)
         self.render.set_light(point_light_node)
 
         node_path_factory = TileNodePathFactory(self.loader)
-        tiles = start_wfc(2, 1)
+        tiles = start_wfc(10, 1)
         for tile in tiles:
             tile["node_path"] = node_path_factory.get_tile_node_path(tile["node_path"])
 
@@ -35,8 +36,8 @@ class Game(ShowBase):
             tile_node_path.set_h(tile["heading"])
             tile_node_path.reparent_to(self.render)
 
-        self.camera.set_pos(0, 20, 0)
-        self.camera.look_at(0, 0, 0)
+        self.camera.set_pos(10, -20, 20)
+        self.camera.look_at(10, 10, 0)
 
 
 app = Game()

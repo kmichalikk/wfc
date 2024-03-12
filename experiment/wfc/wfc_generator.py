@@ -25,9 +25,9 @@ class WFCGridGenerator:
         size = size
         cells = [[] for _ in range(size)]
         count = 0
-        for i in range(size):
-            for j in range(size):
-                cells[i].append(WFCCell((i, j), count, self.tiles_manager))
+        for x in range(size):
+            for y in range(size):
+                cells[x].append(WFCCell((x, y), count, self.tiles_manager))
                 count += 1
 
         self.grid = WFCGrid(size, cells)
@@ -36,7 +36,7 @@ class WFCGridGenerator:
         pq: PriorityQueue[WFCCell] = PriorityQueue()
         to_fix = []
         for x, y in players_positions:
-            cell = cells[y][x]
+            cell = cells[x][y]
             cell.set_collapsed("empty_1")
             cell.place_player()
             self.grid.players_cells.append(cell)
@@ -77,5 +77,5 @@ class WFCGridGenerator:
                     continue
                 if neighbour.update_allowed_tiles(unfinished_cell.get_slots(direction)):
                     pending_fix_queue.put(neighbour)
-                    updated.add(neighbour)
+                updated.add(neighbour)
         return updated

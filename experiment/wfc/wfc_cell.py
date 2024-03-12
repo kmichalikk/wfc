@@ -6,9 +6,13 @@ from experiment.tiles.tilesmap import tiles_map
 from experiment.typings import Direction
 
 
+allowed = ["empty", "concave", "plant"]
+
+
 class WFCCell:
     def __init__(self, position: tuple[int, int], id: int, tiles_manager: TilesManager):
-        self.allowed_tiles: set[str] = set(tiles_map.keys())
+        # todo: allow only certain tiles - remove when all tiles will be working
+        self.allowed_tiles: set[str] = set([k for k in tiles_map.keys() if any([a in k for a in allowed])])
         self.collapsed_tile: Union[str, None] = None
         self.position = position
         self.id = id
