@@ -27,8 +27,6 @@ with (open('slots.csv', 'r') as file):
         if "empty" in tile:
             tiles_map[tile]["weight"] = 20
         elif "water_full" in tile:
-            tiles_map[tile]["weight"] = 1
-        elif "water" in tile:
             tiles_map[tile]["weight"] = 3
         else:
             tiles_map[tile]["weight"] = 5
