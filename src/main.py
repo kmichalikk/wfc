@@ -16,7 +16,7 @@ class Game(ShowBase):
 
         # set window size
         properties = p3d.WindowProperties()
-        properties.set_size(800, 600)
+        properties.set_size(1280, 800)
         self.win.request_properties(properties)
 
         # add lighting
