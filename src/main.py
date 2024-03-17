@@ -1,8 +1,10 @@
-import simplepbr
 from direct.showbase.ShowBase import ShowBase
-import panda3d.core as p3d
+from direct.task.TaskManagerGlobal import taskMgr
+from src.player.player_controller import Player
 from src.wfc_starter import start_wfc
-from src.tiles.TileNodePathFactory import TileNodePathFactory
+from src.tiles.tile_node_path_factory import TileNodePathFactory
+import simplepbr
+import panda3d.core as p3d
 
 
 class Game(ShowBase):
@@ -25,7 +27,7 @@ class Game(ShowBase):
         self.render.set_light(point_light_node)
 
         node_path_factory = TileNodePathFactory(self.loader)
-        tiles = start_wfc(10, 1)
+        tiles, player_positions = start_wfc(10, 1)
         for tile in tiles:
             tile["node_path"] = node_path_factory.get_tile_node_path(tile["node_path"])
 
@@ -38,6 +40,23 @@ class Game(ShowBase):
 
         self.camera.set_pos(10, -20, 20)
         self.camera.look_at(10, 10, 0)
+
+        player_node_path = node_path_factory.get_player_model()
+        player_node_path.set_pos(player_positions[0])
+        player_node_path.reparent_to(self.render)
+        self.player = Player(player_node_path)
+        self.attach_input(self.player)
+        self.player_movement_task = taskMgr.add(self.player.update_position, "update player position")
+
+    def attach_input(self, player: Player):
+        self.accept("w", lambda: player.motion.update_input("+forward"))
+        self.accept("w-up", lambda: player.motion.update_input("-forward"))
+        self.accept("s", lambda: player.motion.update_input("+backward"))
+        self.accept("s-up", lambda: player.motion.update_input("-backward"))
+        self.accept("d", lambda: player.motion.update_input("+right"))
+        self.accept("d-up", lambda: player.motion.update_input("-right"))
+        self.accept("a", lambda: player.motion.update_input("+left"))
+        self.accept("a-up", lambda: player.motion.update_input("-left"))
 
 
 app = Game()
