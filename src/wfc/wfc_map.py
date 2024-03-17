@@ -1,9 +1,9 @@
 from queue import Queue
 
 
-from experiment.tiles.tiles_manager import TilesManager
-from experiment.wfc.wfc_generator import WFCGridGenerator
-from experiment.wfc.wfc_grid import WFCGrid
+from src.tiles.tiles_manager import TilesManager
+from src.wfc.wfc_generator import WFCGridGenerator
+from src.wfc.wfc_grid import WFCGrid
 
 
 class WFCMap:

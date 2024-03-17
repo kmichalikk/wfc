@@ -1,6 +1,6 @@
-from experiment.tiles.tiles_manager import TilesManager
-from experiment.wfc.wfc_generator import WFCGridGenerator
-from experiment.wfc.wfc_map import WFCMap
+from src.tiles.tiles_manager import TilesManager
+from src.wfc.wfc_generator import WFCGridGenerator
+from src.wfc.wfc_map import WFCMap
 
 
 def start_wfc(size: int, players_count: int):

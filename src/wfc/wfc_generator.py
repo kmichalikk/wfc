@@ -2,9 +2,9 @@ from queue import PriorityQueue, Queue
 from random import shuffle
 from typing import Union
 
-from experiment.tiles.tiles_manager import TilesManager
-from experiment.wfc.wfc_cell import WFCCell
-from experiment.wfc.wfc_grid import WFCGrid
+from src.tiles.tiles_manager import TilesManager
+from src.wfc.wfc_cell import WFCCell
+from src.wfc.wfc_grid import WFCGrid
 
 
 class WFCGridGenerator:

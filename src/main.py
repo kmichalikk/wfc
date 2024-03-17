@@ -1,7 +1,7 @@
 import simplepbr
 from direct.showbase.ShowBase import ShowBase
 import panda3d.core as p3d
-from experiment.wfc_starter import start_wfc
+from src.wfc_starter import start_wfc
 from src.tiles.TileNodePathFactory import TileNodePathFactory
 
 
