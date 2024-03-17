@@ -5,8 +5,8 @@ from experiment.tiles.tiles_manager import TilesManager
 from experiment.tiles.tilesmap import tiles_map
 from experiment.typings import Direction
 
-
-allowed = ["empty", "wall_concave", "plant", "wall_convex", "wall_straight", "water"]
+allowed = ["empty", "wall_concave", "plant", "wall_convex", "wall_straight", "water", "wall_slim_tip",
+           "wall_slim_extend"]
 
 
 class WFCCell:
