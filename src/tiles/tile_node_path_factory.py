@@ -9,3 +9,6 @@ class TileNodePathFactory:
         return self.loader.load_model(
             "assets/models/{}".format(name if name[-3:] == "glb" else (name + ".glb"))
         )
+
+    def get_player_model(self):
+        return self.loader.load_model("assets/models/player.glb")
