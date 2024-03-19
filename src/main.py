@@ -1,5 +1,9 @@
+import os
+
 from direct.showbase.ShowBase import ShowBase
 from direct.task.TaskManagerGlobal import taskMgr
+
+from src.client.client import Client
 from src.player.player_controller import Player
 from src.wfc_starter import start_wfc
 from src.tiles.tile_node_path_factory import TileNodePathFactory
@@ -47,6 +51,9 @@ class Game(ShowBase):
         self.player = Player(player_node_path)
         self.attach_input(self.player)
         self.player_movement_task = taskMgr.add(self.player.update_position, "update player position")
+
+        client = Client()
+        client.connect("127.0.0.1", os.environ.get("PORT", 7654))
 
     def attach_input(self, player: Player):
         self.accept("w", lambda: player.motion.update_input("+forward"))

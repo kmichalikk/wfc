@@ -8,7 +8,8 @@ from src.typings import Direction
 
 class WFCCell:
     def __init__(self, position: tuple[int, int], id: int, tiles_manager: TilesManager):
-        self.allowed_tiles: set[str] = set(tiles_map.keys())
+        # todo: remove before merge
+        self.allowed_tiles: set[str] = {"empty_1", "empty_2", "empty_3", "empty_4"}
         self.collapsed_tile: Union[str, None] = None
         self.position = position
         self.id = id
