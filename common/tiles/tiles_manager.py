@@ -1,8 +1,8 @@
 from math import log
 import numpy as np
 
-from src.tiles.tilesmap import tiles_map
-from src.typings import Direction
+from common.tiles.tilesmap import tiles_map
+from common.typings import Direction
 
 
 class TilesManager:

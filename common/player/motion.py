@@ -1,6 +1,6 @@
 from direct.showbase.ShowBaseGlobal import globalClock
 from panda3d.core import Vec3
-from src.typings import Input
+from common.typings import Input
 
 
 class Motion:

@@ -1,5 +1,5 @@
 from panda3d.core import NodePath, Vec3
-from src.player.motion import Motion
+from common.player.motion import Motion
 
 
 class Player:
