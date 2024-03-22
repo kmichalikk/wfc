@@ -1,10 +1,18 @@
+import panda3d.core as p3d
+import simplepbr
+from panda3d.core import Vec3, BitMask32, CollisionSphere, Point3
+
 from direct.showbase.ShowBase import ShowBase
 from direct.task.TaskManagerGlobal import taskMgr
+from panda3d.core import CollisionTraverser, CollisionCapsule
+from panda3d.core import CollisionHandlerPusher
+from panda3d.core import CollisionBox, CollisionNode
+from panda3d.core import CollisionTube
+
 from src.player.player_controller import Player
-from src.wfc_starter import start_wfc
 from src.tiles.tile_node_path_factory import TileNodePathFactory
-import simplepbr
-import panda3d.core as p3d
+from src.tiles.tile_controller import create_new_tile
+from src.wfc_starter import start_wfc
 
 
 class Game(ShowBase):
@@ -26,17 +34,21 @@ class Game(ShowBase):
         point_light_node.set_pos(0, -10, 10)
         self.render.set_light(point_light_node)
 
-        node_path_factory = TileNodePathFactory(self.loader)
-        tiles, player_positions = start_wfc(10, 1)
-        for tile in tiles:
-            tile["node_path"] = node_path_factory.get_tile_node_path(tile["node_path"])
+        self.cTrav = CollisionTraverser()
+        self.pusher = CollisionHandlerPusher()
 
-        tile_node_path: p3d.NodePath
-        for tile in tiles:
-            tile_node_path = tile["node_path"]
-            tile_node_path.set_pos(*tile["pos"])
-            tile_node_path.set_h(tile["heading"])
-            tile_node_path.reparent_to(self.render)
+        node_path_factory = TileNodePathFactory(self.loader)
+        tiles, player_positions = start_wfc(10, 5)
+
+        tile: p3d.NodePath
+        for tile_data in tiles:
+            tile = create_new_tile(self.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"])
+            tile.reparent_to(self.render)
+            if "wall" in tile_data["node_path"]:
+                self.exclusion_zone = tile.attachNewNode(CollisionNode('exclusion_zone'))
+                self.exclusion_zone.node().addSolid(CollisionSphere(0, 0, 0, 1))
+                self.exclusion_zone.show()
+
 
         self.camera.set_pos(10, -20, 20)
         self.camera.look_at(10, 10, 0)
@@ -44,9 +56,20 @@ class Game(ShowBase):
         player_node_path = node_path_factory.get_player_model()
         player_node_path.set_pos(player_positions[0])
         player_node_path.reparent_to(self.render)
+
+
         self.player = Player(player_node_path)
         self.attach_input(self.player)
         self.player_movement_task = taskMgr.add(self.player.update_position, "update player position")
+
+        collider = self.player.collider
+        collider.show()
+        self.pusher.addCollider(collider, self.player.model, self.drive.node())
+        self.cTrav.addCollider(collider, self.pusher)
+        self.pusher.setHorizontal(True)  # Umożliwia odpychanie w poziomie
+
+
+
 
     def attach_input(self, player: Player):
         self.accept("w", lambda: player.motion.update_input("+forward"))
