@@ -78,7 +78,7 @@ class Game(ShowBase):
                 exclusion_zone.add_solid(zone)
 
             exclusion_node_path = tile.attach_new_node(exclusion_zone)
-            # exclusion_node_path.show()
+            exclusion_node_path.show()
 
     def create_borders(self, map_size):
         collision_tubes = [
