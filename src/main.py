@@ -12,6 +12,7 @@ from panda3d.core import CollisionTube
 from src.player.player_controller import Player
 from src.tiles.tile_node_path_factory import TileNodePathFactory
 from src.tiles.tile_controller import create_new_tile
+from src.tiles.tile_controller import collision_shapes
 from src.wfc_starter import start_wfc
 
 
@@ -40,23 +41,9 @@ class Game(ShowBase):
         node_path_factory = TileNodePathFactory(self.loader)
         tiles, player_positions = start_wfc(10, 5)
 
-        tile: p3d.NodePath
-        for tile_data in tiles:
-            tile = create_new_tile(self.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"])
-            tile.reparent_to(self.render)
-            if "wall" in tile_data["node_path"]:
-                self.exclusion_zone = tile.attachNewNode(CollisionNode('exclusion_zone'))
-                self.exclusion_zone.node().addSolid(CollisionSphere(0, 0, 0, 1))
-                self.exclusion_zone.show()
-
-
-        self.camera.set_pos(10, -20, 20)
-        self.camera.look_at(10, 10, 0)
-
         player_node_path = node_path_factory.get_player_model()
         player_node_path.set_pos(player_positions[0])
         player_node_path.reparent_to(self.render)
-
 
         self.player = Player(player_node_path)
         self.attach_input(self.player)
@@ -68,8 +55,25 @@ class Game(ShowBase):
         self.cTrav.addCollider(collider, self.pusher)
         self.pusher.setHorizontal(True)  # Umożliwia odpychanie w poziomie
 
+        tile: p3d.NodePath
+        for tile_data in tiles:
+            tile = create_new_tile(self.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"])
+            tile.reparent_to(self.render)
+            self.create_exclusion_zone(tile, tile_data["node_path"])
 
+        self.camera.set_pos(10, 10, 40)
+        self.camera.look_at(10, 10, 0)
 
+    def create_exclusion_zone(self, tile, name):
+        zones = collision_shapes[name]
+        if zones:
+            exclusion_zone = CollisionNode(name)
+            for zone in zones:
+                exclusion_zone.add_solid(zone)
+
+            exclusion_node_path = tile.attach_new_node(exclusion_zone)
+            exclusion_node_path.show()
+            self.cTrav.addCollider(exclusion_node_path, self.pusher)
 
     def attach_input(self, player: Player):
         self.accept("w", lambda: player.motion.update_input("+forward"))
