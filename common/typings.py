@@ -8,6 +8,7 @@ Input = Literal["+forward", "-forward", "+right", "-right", "+left", "-left", "+
 
 class Messages(IntEnum):
     HELLO = auto()
+    HELLO_OK = auto()
     FIND_ROOM = auto()
     FIND_ROOM_OK = auto()
     ACCEPT_ROOM = auto()
