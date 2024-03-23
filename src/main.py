@@ -51,8 +51,8 @@ class Game(ShowBase):
 
         collider = self.player.collider
         collider.show()
-        self.pusher.addCollider(collider, self.player.model, self.drive.node())
         self.cTrav.addCollider(collider, self.pusher)
+        self.pusher.addCollider(collider, self.player.model, self.drive.node())
         self.pusher.setHorizontal(True)  # Umożliwia odpychanie w poziomie
 
         tile: p3d.NodePath
@@ -73,7 +73,6 @@ class Game(ShowBase):
 
             exclusion_node_path = tile.attach_new_node(exclusion_zone)
             exclusion_node_path.show()
-            self.cTrav.addCollider(exclusion_node_path, self.pusher)
 
     def attach_input(self, player: Player):
         self.accept("w", lambda: player.motion.update_input("+forward"))
