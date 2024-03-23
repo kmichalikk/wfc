@@ -9,7 +9,7 @@ class Player:
         self.motion = Motion(model.get_pos())
 
         collider_node = CollisionNode("player")
-        collider_node.addSolid(CollisionSphere(0, 0, 0, 0.2))
+        collider_node.addSolid(CollisionSphere(0, 0, 0.5, 0.4))
         self.collider = self.model.attach_new_node(collider_node)
 
     def update_position(self, task):

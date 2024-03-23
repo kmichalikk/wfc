@@ -1,5 +1,5 @@
 import panda3d.core as p3d
-from panda3d.core import CollisionNode, CollisionSphere, CollisionBox, Point3
+from panda3d.core import CollisionBox, Point3
 
 
 def create_new_tile(loader: p3d.Loader, name: str, position: tuple, heading: int):
@@ -13,17 +13,21 @@ def create_new_tile(loader: p3d.Loader, name: str, position: tuple, heading: int
 
 
 collision_shapes = {
-    "wall_slim_single_1": [CollisionBox(Point3(0, 0, 0), 0.5, 0.5, 1)],
-    "wall_concave_1": [CollisionBox(Point3(-0.5, 0.5, 0), 0.5, 0.5, 1)],
-    "wall_convex_1": [CollisionBox(Point3(-0.5, 0, 0), 0.5, 1, 1), CollisionBox(Point3(0, 0.5, 0), 1, 0.5, 1)],
-    "wall_slim_extend_1": [CollisionBox(Point3(0, 0, 0), 1, 0.5, 1)],
-    "wall_slim_join2_1": [CollisionBox(Point3(-0.25, 0, 0), 0.75, 0.5, 1), CollisionBox(Point3(0, -0.25, 0), 0.5, 0.75, 1)],
-    "wall_slim_join3_1": [CollisionBox(Point3(0, 0, 0), 1, 0.5, 1), CollisionBox(Point3(0, -0.25, 0), 0.5, 0.75, 1)],
-    "wall_slim_join4_1": [CollisionBox(Point3(0, 0, 0), 1, 0.5, 1), CollisionBox(Point3(0, 0, 0), 0.5, 1, 1)],
-    "wall_slim_tip_1": [CollisionBox(Point3(0, 0.5, 0), 0.5, 0.5, 1)],
-    "wall_straight_1_1": [CollisionBox(Point3(0, 0.5, 0), 1, 0.5, 1)],
-    "wall_straight_2_1": [CollisionBox(Point3(0, 0.5, 0), 1, 0.5, 1)],
-    "wall_straight_join1_1": [CollisionBox(Point3(0, 0.5, 0), 1, 0.5, 1)],
+    "wall_slim_single_1": [CollisionBox(Point3(0, 0, 0.5), 0.5, 0.5, 1)],
+    "wall_concave_1": [CollisionBox(Point3(-0.5, 0.5, 0.5), 0.5, 0.5, 1)],
+    "wall_convex_1": [CollisionBox(Point3(-0.5, 0, 0.5), 0.5, 1, 1),
+                      CollisionBox(Point3(0, 0.5, 0.5), 1, 0.5, 1)],
+    "wall_slim_extend_1": [CollisionBox(Point3(0, 0, 0.5), 1, 0.5, 1)],
+    "wall_slim_join2_1": [CollisionBox(Point3(-0.25, 0, 0.5), 0.75, 0.5, 1),
+                          CollisionBox(Point3(0, -0.25, 0.5), 0.5, 0.75, 1)],
+    "wall_slim_join3_1": [CollisionBox(Point3(0, 0, 0.5), 1, 0.5, 1),
+                          CollisionBox(Point3(0, -0.25, 0.5), 0.5, 0.75, 1)],
+    "wall_slim_join4_1": [CollisionBox(Point3(0, 0, 0.5), 1, 0.5, 1),
+                          CollisionBox(Point3(0, 0, 0.5), 0.5, 1, 1)],
+    "wall_slim_tip_1": [CollisionBox(Point3(0, 0.5, 0.5), 0.5, 0.5, 1)],
+    "wall_straight_1_1": [CollisionBox(Point3(0, 0.5, 0.5), 1, 0.5, 1)],
+    "wall_straight_2_1": [CollisionBox(Point3(0, 0.5, 0.5), 1, 0.5, 1)],
+    "wall_straight_join1_1": [CollisionBox(Point3(0, 0.5, 0.5), 1, 0.5, 1)],
     "empty_1": [],
     "plants_1": [],
     "water_concave_1": [],

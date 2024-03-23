@@ -1,13 +1,9 @@
 import panda3d.core as p3d
 import simplepbr
-from panda3d.core import Vec3, BitMask32, CollisionSphere, Point3
 
 from direct.showbase.ShowBase import ShowBase
 from direct.task.TaskManagerGlobal import taskMgr
-from panda3d.core import CollisionTraverser, CollisionCapsule
-from panda3d.core import CollisionHandlerPusher
-from panda3d.core import CollisionBox, CollisionNode
-from panda3d.core import CollisionTube
+from panda3d.core import CollisionTraverser, CollisionHandlerPusher, CollisionNode, CollisionTube
 
 from src.player.player_controller import Player
 from src.tiles.tile_node_path_factory import TileNodePathFactory
@@ -20,26 +16,25 @@ class Game(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
 
-        # initialize Physics Based Rendering
+        map_size = 10
+
         simplepbr.init()
-        # disable default mouse movement in order to set the camera to fixed position
         self.disableMouse()
 
-        # set window size
         properties = p3d.WindowProperties()
         properties.set_size(1280, 800)
         self.win.request_properties(properties)
 
-        # add lighting
         point_light_node = self.render.attach_new_node(p3d.PointLight("light"))
         point_light_node.set_pos(0, -10, 10)
         self.render.set_light(point_light_node)
 
         self.cTrav = CollisionTraverser()
         self.pusher = CollisionHandlerPusher()
+        self.pusher.setHorizontal(True)
 
         node_path_factory = TileNodePathFactory(self.loader)
-        tiles, player_positions = start_wfc(10, 5)
+        tiles, player_positions = start_wfc(map_size, 5)
 
         player_node_path = node_path_factory.get_player_model()
         player_node_path.set_pos(player_positions[0])
@@ -50,10 +45,10 @@ class Game(ShowBase):
         self.player_movement_task = taskMgr.add(self.player.update_position, "update player position")
 
         collider = self.player.collider
-        collider.show()
+        # collider.show()
         self.cTrav.addCollider(collider, self.pusher)
-        self.pusher.addCollider(collider, self.player.model, self.drive.node())
-        self.pusher.setHorizontal(True)  # Umożliwia odpychanie w poziomie
+        self.pusher.addCollider(collider, self.player.model)
+        self.pusher.setHorizontal(True)
 
         tile: p3d.NodePath
         for tile_data in tiles:
@@ -61,10 +56,21 @@ class Game(ShowBase):
             tile.reparent_to(self.render)
             self.create_exclusion_zone(tile, tile_data["node_path"])
 
-        self.camera.set_pos(10, 10, 40)
+        # self.camera.set_pos(self.player.model.getX(), self.player.model.getY()-3, 7)
+        # self.camera.lookAt(self.player.model)
+        # self.taskMgr.add(self.update_camera, "UpdateCamera")
+
+        self.camera.set_pos(10, 10, 50)
         self.camera.look_at(10, 10, 0)
 
-    def create_exclusion_zone(self, tile, name):
+        self.create_borders(map_size)
+
+    def update_camera(self, task):
+        self.camera.setPos(self.player.model.getX(), self.player.model.getY()-3, 7)
+        return task.cont
+
+    @staticmethod
+    def create_exclusion_zone(tile, name):
         zones = collision_shapes[name]
         if zones:
             exclusion_zone = CollisionNode(name)
@@ -72,7 +78,21 @@ class Game(ShowBase):
                 exclusion_zone.add_solid(zone)
 
             exclusion_node_path = tile.attach_new_node(exclusion_zone)
-            exclusion_node_path.show()
+            # exclusion_node_path.show()
+
+    def create_borders(self, map_size):
+        collision_tubes = [
+            CollisionTube(-2, -2, 0, map_size * 2, -2, 0, 1),
+            CollisionTube(-2, map_size * 2, 0, map_size * 2, map_size * 2, 0, 1),
+            CollisionTube(-2, -2, 0, -2, map_size * 2, 0, 1),
+            CollisionTube(map_size * 2, -2, 0, map_size * 2, map_size * 2, 0, 1)
+        ]
+        for tube in collision_tubes:
+            wall_shape = tube
+            wall_node = CollisionNode("wall")
+            wall_node.addSolid(wall_shape)
+            wall = self.render.attachNewNode(wall_node)
+            wall.show()
 
     def attach_input(self, player: Player):
         self.accept("w", lambda: player.motion.update_input("+forward"))
