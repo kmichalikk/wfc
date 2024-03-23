@@ -3,8 +3,7 @@ from direct.showbase.ShowBase import ShowBase
 from direct.task.TaskManagerGlobal import taskMgr
 
 from client.connect.connect import Connection
-from common.player.motion import Motion
-from common.player.player_controller import Player
+from common.player.player_controller import PlayerController
 from common.tiles.tile_node_path_factory import TileNodePathFactory
 import simplepbr
 import panda3d.core as p3d
@@ -53,32 +52,26 @@ class Game(ShowBase):
             player_node_path = self.node_path_factory.get_player_model()
             player_node_path.set_pos(p3d.Vec3(5, 5, 0))
             player_node_path.reparent_to(self.render)
-            self.player = Player(player_node_path, connection, player_id)
+            self.player = PlayerController(player_node_path, connection, player_id)
             self.all_players[player_id] = self.player
             self.attach_input(self.player)
-            self.player_movement_task = taskMgr.add(self.player.sync_position, "update player position")
+            self.player_movement_task = taskMgr.add(self.player.sync_position_task, "update player position")
             connection.set_sync_task(self.sync)
 
         connection.find_room(render)
 
     def sync(self, datagram_iterator):
-        global_state_index = datagram_iterator.get_uint32()
-        print(global_state_index)
         num_players = datagram_iterator.get_uint8()
         for _ in range(num_players):
             id = datagram_iterator.get_string()
             if id not in self.all_players:
                 player_node = self.node_path_factory.get_player_model()
                 player_node.reparent_to(self.render)
-                self.all_players[id] = Player(player_node, id=id)
-            acc = p3d.Vec3(datagram_iterator.get_float32(), datagram_iterator.get_float32(), 0)
-            vel = p3d.Vec3(datagram_iterator.get_float32(), datagram_iterator.get_float32(), 0)
-            pos = p3d.Vec3(datagram_iterator.get_float32(), datagram_iterator.get_float32(), 0)
-            motion = Motion(pos, vel, acc)
-            self.all_players[id].set_motion(motion)
-            self.all_players[id].model.set_pos(motion.position)
+                self.all_players[id] = PlayerController(player_node, id=id)
+            self.all_players[id].fill_motion(datagram_iterator)
+            self.all_players[id].sync_position()
 
-    def attach_input(self, player: Player):
+    def attach_input(self, player: PlayerController):
         self.accept("w", lambda: player.update_input("+forward"))
         self.accept("w-up", lambda: player.update_input("-forward"))
         self.accept("s", lambda: player.update_input("+backward"))

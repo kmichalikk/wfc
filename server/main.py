@@ -7,7 +7,7 @@ from direct.distributed.PyDatagramIterator import PyDatagramIterator
 from direct.showbase.ShowBase import ShowBase
 from direct.task.TaskManagerGlobal import taskMgr
 
-from common.player.player_controller import Player
+from common.player.player_controller import PlayerController
 from common.tiles.tile_node_path_factory import TileNodePathFactory
 from common.typings import Messages
 from server.wfc_starter import start_wfc
@@ -22,7 +22,6 @@ class Server(ShowBase):
         self.connection_writer = p3d.ConnectionWriter(self.connection_manager, 0)
         self.active_connections = {}
         self.players = {}
-        self.global_state_index = 0
         self.node_path_factory = TileNodePathFactory(self.loader)
         print("[INFO] Starting WFC map generation")
         self.tiles, self.player_positions = start_wfc(10, 1)
@@ -47,15 +46,15 @@ class Server(ShowBase):
                 print(f"[INFO] New connection from {new_connection.get_address()}")
                 self.connection_reader.add_connection(new_connection)
                 player_id = str(hash(new_connection.get_address()))
-                player = Player(self.node_path_factory.get_player_model(), id=player_id)
+                player = PlayerController(self.node_path_factory.get_player_model(), id=player_id)
                 self.players[player_id] = player
                 self.active_connections[player_id] = new_connection
-                taskMgr.add(player.update_position, "update player position")
+                taskMgr.add(player.update_position_task, "update player position")
 
         return task.cont
 
     def poll_reader(self, task):
-        if self.connection_reader.data_available():
+        while self.connection_reader.data_available():
             datagram = p3d.NetDatagram()
             if self.connection_reader.get_data(datagram):
                 datagram_iterator = PyDatagramIterator(datagram)
@@ -65,18 +64,13 @@ class Server(ShowBase):
 
     def broadcast_global_state(self, task):
         datagram = PyDatagram()
-        datagram.add_uint32(self.global_state_index)
-        self.global_state_index += 1
+        datagram.add_uint8(Messages.GLOBAL_STATE)
         datagram.add_uint8(len(self.players))
         for id, player in self.players.items():
             datagram.add_string(id)
-            motion_vectors = (player.motion.acceleration, player.motion.velocity, player.motion.position)
-            for v in motion_vectors:
-                datagram.add_float32(v.get_x())
-                datagram.add_float32(v.get_y())
+            player.dump_motion(datagram)
         for player in self.players.values():
             self.connection_writer.send(datagram, self.active_connections[player.id])
-            print(self.global_state_index)
         return task.cont
 
     def handle_message(self, message, datagram_iterator, origin_connection):
@@ -95,11 +89,6 @@ class Server(ShowBase):
         elif message == Messages.UPDATE_INPUT:
             input = datagram_iterator.get_string()
             self.players[str(hash(origin_connection.get_address()))].motion.update_input(input)
-        elif message == Messages.GLOBAL_STATE:
-            datagram = PyDatagram()
-            datagram.add_uint8(Messages.ACCEPT_ROOM_OK)
-            datagram.add_blob(pickle.dumps(self.tiles))
-            self.connection_writer.send(datagram, origin_connection)
 
 
 if __name__ == "__main__":

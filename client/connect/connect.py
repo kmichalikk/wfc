@@ -67,7 +67,9 @@ class Connection(DirectObject):
                     return task.cont
 
                 datagram_iterator = PyDatagramIterator(datagram)
-                sync_function(datagram_iterator)
+                message = datagram_iterator.get_uint8()
+                if message == Messages.GLOBAL_STATE:
+                    sync_function(datagram_iterator)
             return task.cont
 
         taskMgr.add(poll, "poll global state")
