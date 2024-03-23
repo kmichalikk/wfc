@@ -1,5 +1,6 @@
 import os
 import pickle
+import sys
 
 import panda3d.core as p3d
 from direct.distributed.PyDatagram import PyDatagram
@@ -11,6 +12,8 @@ from common.player.player_controller import PlayerController
 from common.tiles.tile_node_path_factory import TileNodePathFactory
 from common.typings import Messages
 from server.wfc_starter import start_wfc
+
+sys.path.append("../common")
 
 
 class Server(ShowBase):

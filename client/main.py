@@ -1,4 +1,6 @@
 import os
+import sys
+
 from direct.showbase.ShowBase import ShowBase
 from direct.task.TaskManagerGlobal import taskMgr
 
@@ -7,6 +9,8 @@ from common.player.player_controller import PlayerController
 from common.tiles.tile_node_path_factory import TileNodePathFactory
 import simplepbr
 import panda3d.core as p3d
+
+sys.path.append("../common")
 
 
 class Game(ShowBase):
