@@ -1,16 +1,13 @@
-from typing import List
-
 import panda3d.core as p3d
 from panda3d.core import CollisionTraverser, CollisionHandlerPusher
 from border import Border
 from collision_object import CollisionObject
-from src.game import Game
 from tiles.tile_controller import create_new_tile, collision_shapes
 from src.tiles.tile_node_path_factory import TileNodePathFactory
 from src.player.player_controller import Player
 
 
-def setup_map(game: Game, tiles: List):
+def setup_map(game, tiles):
     game.disableMouse()
 
     properties = p3d.WindowProperties()
@@ -38,7 +35,7 @@ def setup_map(game: Game, tiles: List):
     game.taskMgr.add(game.update_camera, "update camera")
 
 
-def setup_player(game: Game, player_positions: List):
+def setup_player(game, player_positions):
     node_path_factory = TileNodePathFactory(game.loader)
     player_node_path = node_path_factory.get_player_model()
     player_node_path.set_pos(player_positions[0])
