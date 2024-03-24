@@ -1,5 +1,5 @@
 import panda3d.core as p3d
-from panda3d.core import CollisionBox, Point3
+from panda3d.core import CollisionBox, Point3, CollisionSphere
 
 
 def create_new_tile(loader: p3d.Loader, name: str, position: tuple, heading: int):
@@ -29,8 +29,10 @@ collision_shapes = {
     "wall_straight_2_1": [CollisionBox(Point3(0, 0.5, 0.5), 1, 0.5, 1)],
     "wall_straight_join1_1": [CollisionBox(Point3(0, 0.5, 0.5), 1, 0.5, 1),
                               CollisionBox(Point3(0, 0, 0.5), 0.5, 1, 1)],
+    "plants_1": [CollisionBox(Point3(-0.6, 0.3, 0.5), 0.1, 0.1, 0.5),
+                 CollisionSphere(0.15, 0.25, 0.2, 0.2),
+                 CollisionSphere(-0.4, -0.75, 0.2, 0.2)],
     "empty_1": [],
-    "plants_1": [],
     "water_concave_1": [],
     "water_convex_1": [],
     "water_extend_1": [],
