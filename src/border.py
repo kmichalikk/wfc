@@ -1,4 +1,4 @@
-from panda3d.core import CollisionNode, CollisionTube
+from panda3d.core import CollisionTube
 from collision_object import CollisionObject
 
 
