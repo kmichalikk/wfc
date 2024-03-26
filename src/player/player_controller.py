@@ -5,7 +5,7 @@ from src.collision_object import CollisionObject
 
 class Player(CollisionObject):
     def __init__(self, model: NodePath):
-        super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 0.5, 0.4)])
+        super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 0.5, 0.25)])
 
         self.model = model
         self.motion = Motion(model.get_pos())

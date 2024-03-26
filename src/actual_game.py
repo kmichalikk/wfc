@@ -7,7 +7,7 @@ class ActualGame(Game):
         super().__init__()
 
     def update_camera(self, task):
-        self.camera.set_pos(self.player.model.getX(), self.player.model.getY() - 3, 7)
+        self.camera.set_pos(self.player.model.getX(), self.player.model.getY() - 10, 15)
         self.camera.look_at(self.player.model)
         return task.cont
 
