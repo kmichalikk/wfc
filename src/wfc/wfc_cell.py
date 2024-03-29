@@ -65,5 +65,5 @@ class WFCCell:
 
     def __gt__(self, other):
         e1 = self.get_entropy()
-        e2 = self.get_entropy()
+        e2 = other.get_entropy()
         return e1 > e2 if e1 != e2 else randint(0, 1) == 1
