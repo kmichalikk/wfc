@@ -1,6 +1,5 @@
 from common.state.player_state_diff import PlayerStateDiff
-from common.transfer.network_transfer_builder import NetworkTransferBuilder
-from common.typings import SupportsDiff, SupportsNetworkTransfer, Step
+from common.typings import SupportsDiff, SupportsNetworkTransfer, Step, SupportsBuildingNetworkTransfer
 
 
 class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
@@ -8,7 +7,7 @@ class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.step = step
         self.player_state: dict[str, PlayerStateDiff] = {}
 
-    def transfer(self, builder: NetworkTransferBuilder):
+    def transfer(self, builder: SupportsBuildingNetworkTransfer):
         pass
 
     def apply(self, other: 'GameStateDiff'):

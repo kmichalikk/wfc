@@ -1,13 +1,13 @@
 from abc import abstractmethod
 from typing import Literal, Protocol, TypeVar, NamedTuple
 
-from common.transfer.network_transfer_builder import NetworkTransferBuilder
-
 Direction = Literal["n", "e", "s", "w"]
 
 Input = Literal["+forward", "-forward", "+right", "-right", "+left", "-left", "+backward", "-backward"]
 
 Item = Literal["flag", "empty"]
+
+Address = tuple[str, int]  # (address, port)
 
 
 class Step(NamedTuple):
@@ -16,9 +16,19 @@ class Step(NamedTuple):
     index: int
 
 
+class SupportsBuildingNetworkTransfer(Protocol):
+    @abstractmethod
+    def encode(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def decode(self, payload: bytes):
+        raise NotImplementedError()
+
+
 class SupportsNetworkTransfer(Protocol):
     @abstractmethod
-    def transfer(self, builder: NetworkTransferBuilder):
+    def transfer(self, builder: SupportsBuildingNetworkTransfer):
         raise NotImplementedError()
 
 

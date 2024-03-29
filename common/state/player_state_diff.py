@@ -1,8 +1,7 @@
 from panda3d.core import Vec3
 
 from common.state.motion_state_diff import MotionStateDiff
-from common.transfer.network_transfer_builder import NetworkTransferBuilder
-from common.typings import SupportsDiff, SupportsNetworkTransfer, Item, Step
+from common.typings import SupportsDiff, SupportsNetworkTransfer, Item, Step, SupportsBuildingNetworkTransfer
 
 
 class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
@@ -32,5 +31,5 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
         return diff_state
 
-    def transfer(self, builder: NetworkTransferBuilder):
+    def transfer(self, builder: SupportsBuildingNetworkTransfer):
         pass

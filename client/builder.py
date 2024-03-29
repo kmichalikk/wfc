@@ -42,5 +42,5 @@ def setup_player(game, player_positions):
     player_node_path.reparent_to(game.render)
 
     game.player = PlayerController(player_node_path)
-    game.attach_input(game.player)
+    game.attach_input()
     game.player_movement_task = game.taskMgr.add(game.player.update_position, "update player position")

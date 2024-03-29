@@ -1,6 +1,7 @@
 from panda3d.core import NodePath, Vec3, CollisionSphere
 from common.player.motion import Motion
 from common.collision.collision_object import CollisionObject
+from common.typings import Input
 
 
 class PlayerController(CollisionObject):
@@ -9,6 +10,9 @@ class PlayerController(CollisionObject):
 
         self.model = model
         self.motion = Motion(model.get_pos())
+
+    def update_input(self, input: Input):
+        self.motion.update_input(input)
 
     def update_position(self, task):
         self.motion.position = self.colliders[0].get_pos()
