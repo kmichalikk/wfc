@@ -1,4 +1,4 @@
-from game import Game
+from client.game import Game
 
 
 class TestGame(Game):

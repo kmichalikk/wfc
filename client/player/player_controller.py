@@ -1,9 +1,9 @@
 from panda3d.core import NodePath, Vec3, CollisionSphere
-from src.player.motion import Motion
-from src.collision_object import CollisionObject
+from common.player.motion import Motion
+from common.collision.collision_object import CollisionObject
 
 
-class Player(CollisionObject):
+class PlayerController(CollisionObject):
     def __init__(self, model: NodePath):
         super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 0.5, 0.25)])
 

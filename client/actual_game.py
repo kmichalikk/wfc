@@ -1,4 +1,11 @@
-from game import Game
+import sys
+
+from client.game import Game
+
+
+sys.path.append("../common")
+sys.path.append("../server")
+sys.path.append(".")
 
 
 class ActualGame(Game):

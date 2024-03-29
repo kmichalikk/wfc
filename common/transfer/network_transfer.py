@@ -1,0 +1,2 @@
+class NetworkTransfer:
+    pass

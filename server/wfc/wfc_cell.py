@@ -1,9 +1,9 @@
 from random import randint
 from typing import Union
 
-from src.tiles.tiles_manager import TilesManager
-from src.tiles.tilesmap import tiles_map
-from src.typings import Direction
+from common.tiles.tiles_manager import TilesManager
+from common.tiles.tilesmap import tiles_map
+from common.typings import Direction
 
 
 class WFCCell:
