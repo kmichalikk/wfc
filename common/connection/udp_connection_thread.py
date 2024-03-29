@@ -13,21 +13,21 @@ class UDPConnectionThread(Thread):
         self.addr = addr
         self.port = port
         self.lock = Lock()
-        self.incoming: list[bytes] = []
+        self.incoming: list[NetworkTransfer] = []
         self.outgoing: Queue[NetworkTransfer] = Queue()
         self.pipe_out_socket, self.pipe_in_socket = socketpair()
         self.udp_socket = socket(AF_INET, SOCK_DGRAM)
         self.udp_socket.bind((self.addr, self.port))
         self.network_transfer_builder = NetworkTransferBuilder()
 
-    def get_queued_messages(self):
+    def get_queued_transfers(self):
         self.lock.acquire()
         cpy = self.incoming.copy()
         self.incoming = []
         self.lock.release()
-        return [self.network_transfer_builder.decode(data) for data in cpy]
+        return [transfer for transfer in cpy]
 
-    def enqueue_message(self, transfer: NetworkTransfer):
+    def enqueue_transfer(self, transfer: NetworkTransfer):
         self.lock.acquire()
         self.outgoing.put(transfer)
         self.lock.release()
@@ -37,13 +37,15 @@ class UDPConnectionThread(Thread):
         while True:
             ready_sockets, _, _ = select([self.udp_socket, self.pipe_out_socket], [], [])
             if self.udp_socket in ready_sockets:
-                payload, addr = self.udp_socket.recvfrom(4096)
+                payload, addr = self.udp_socket.recvfrom(10240)
                 self.lock.acquire()
-                self.incoming.append(payload)
+                self.network_transfer_builder.set_source(addr)
+                self.incoming.append(self.network_transfer_builder.decode(payload))
                 self.lock.release()
             elif not self.outgoing.empty():
                 self.pipe_out_socket.recv(1)
                 self.lock.acquire()
                 transfer = self.outgoing.get()
                 self.lock.release()
+                print("[UDP] Sending {} bytes".format(len(transfer.get_payload())))
                 self.udp_socket.sendto(transfer.get_payload(), transfer.get_destination())

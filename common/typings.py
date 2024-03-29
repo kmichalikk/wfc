@@ -1,5 +1,6 @@
 from abc import abstractmethod
-from typing import Literal, Protocol, TypeVar, NamedTuple
+from enum import IntEnum, auto
+from typing import Literal, Protocol, TypeVar, NamedTuple, Union
 
 Direction = Literal["n", "e", "s", "w"]
 
@@ -7,16 +8,33 @@ Input = Literal["+forward", "-forward", "+right", "-right", "+left", "-left", "+
 
 Item = Literal["flag", "empty"]
 
-Address = tuple[str, int]  # (address, port)
+Address = tuple[Union[str, None], Union[int, None]]  # (address, port)
 
 
-class Step(NamedTuple):
-    begin: int
-    end: int
+class Messages(IntEnum):
+    HELLO = auto()
+    HELLO_OK = auto()
+    FIND_ROOM = auto()
+    FIND_ROOM_OK = auto()
+    ACCEPT_ROOM = auto()
+    ACCEPT_ROOM_OK = auto()
+    ACCEPT_ROOM_FAIL = auto()
+    LEAVE_ROOM = auto()
+    GLOBAL_STATE = auto()
+    UPDATE_INPUT = auto()
+
+
+class TimeStep(NamedTuple):
+    begin: float
+    end: float
     index: int
 
 
 class SupportsBuildingNetworkTransfer(Protocol):
+    @abstractmethod
+    def add(self, key: str, value: Union[str, int]):
+        raise NotImplementedError()
+
     @abstractmethod
     def encode(self):
         raise NotImplementedError()
@@ -29,6 +47,10 @@ class SupportsBuildingNetworkTransfer(Protocol):
 class SupportsNetworkTransfer(Protocol):
     @abstractmethod
     def transfer(self, builder: SupportsBuildingNetworkTransfer):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def restore(self, transfer):
         raise NotImplementedError()
 
 

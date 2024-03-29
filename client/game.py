@@ -6,26 +6,24 @@ from direct.showbase.ShowBase import ShowBase
 
 from client.builder import setup_map, setup_player
 from client.connection.connection_manager import ConnectionManager
-from client.player.player_controller import PlayerController
+from common.config.game_config import GameConfig
+from common.player.player_controller import PlayerController
 from common.typings import Input
-from server.wfc.wfc_starter import start_wfc
-
 
 class Game(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
+        simplepbr.init()
 
         self.map_size = 10
         self.players_count = 4
         self.player: Union[PlayerController, None] = None
         self.connection_manager = ConnectionManager(('127.0.0.1', 7654))
+        self.connection_manager.wait_for_connection(self.ready_handler)
 
-        simplepbr.init()
-
-        tiles, player_positions = start_wfc(self.map_size, self.players_count)
-
-        setup_map(self, tiles)
-        setup_player(self, player_positions)
+    def ready_handler(self, game_config: GameConfig):
+        setup_map(self, game_config.tiles)
+        setup_player(self, game_config.player_position)
 
         player_collider = self.player.colliders[0]
         self.cTrav.addCollider(player_collider, self.pusher)

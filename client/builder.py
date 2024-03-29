@@ -2,9 +2,11 @@ import panda3d.core as p3d
 from panda3d.core import CollisionTraverser, CollisionHandlerPusher
 from common.collision.border import Border
 from common.collision.collision_object import CollisionObject
+from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_controller import create_new_tile, collision_shapes
 from common.tiles.tile_node_path_factory import TileNodePathFactory
-from client.player.player_controller import PlayerController
+from common.player.player_controller import PlayerController
+from common.typings import TimeStep
 
 
 def setup_map(game, tiles):
@@ -41,6 +43,9 @@ def setup_player(game, player_positions):
     player_node_path.set_pos(player_positions[0])
     player_node_path.reparent_to(game.render)
 
-    game.player = PlayerController(player_node_path)
+    game.player = PlayerController(
+        player_node_path,
+        PlayerStateDiff(TimeStep(0, 0, 0), "0")
+    )
     game.attach_input()
     game.player_movement_task = game.taskMgr.add(game.player.update_position, "update player position")
