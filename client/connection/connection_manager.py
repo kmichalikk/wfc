@@ -3,8 +3,8 @@ from typing import Callable
 from direct.showbase.DirectObject import DirectObject
 from direct.task.TaskManagerGlobal import taskMgr
 
-from common.config.game_config import GameConfig
 from common.connection.udp_connection_thread import UDPConnectionThread
+from common.state.game_config import GameConfig
 from common.state.player_state_diff import PlayerStateDiff
 from common.transfer.network_transfer import NetworkTransfer
 from common.transfer.network_transfer_builder import NetworkTransferBuilder
@@ -25,6 +25,7 @@ class ConnectionManager(DirectObject):
         self.game_state_change_subscriber = lambda _: False
         self.new_player_subscriber = lambda _: False
         taskMgr.add(self.process_messages, "process incoming transfers")
+        self.counter = 0
 
     def wait_for_connection(self, ready_handler: Callable[[GameConfig], None]):
         self.ready_handler = ready_handler
@@ -53,6 +54,7 @@ class ConnectionManager(DirectObject):
                 game_config.restore(transfer)
                 self.ready_handler(game_config)
             elif type == Messages.GLOBAL_STATE:
+                self.counter += 1
                 self.game_state_change_subscriber(transfer)
             elif type == Messages.NEW_PLAYER:
                 player_state = PlayerStateDiff.empty(transfer.get("id"))

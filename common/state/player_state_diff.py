@@ -17,10 +17,10 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.slot = other.slot
 
     def diff(self, other: 'PlayerStateDiff') -> 'PlayerStateDiff':
-        if other.step.begin < self.step.end:
+        if other.step.end < self.step.end:
             raise RuntimeError("invalid order of game states to diff")
 
-        diff_state = PlayerStateDiff(TimeStep(self.step.end, other.step.end))
+        diff_state = PlayerStateDiff(TimeStep(self.step.end, other.step.end), self.id)
         diff_state.motion_state = other.motion_state.diff(self.motion_state)
         diff_state.slot = other.slot
 

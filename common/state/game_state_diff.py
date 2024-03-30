@@ -23,20 +23,23 @@ class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
     def apply(self, other: 'GameStateDiff'):
         self.step = TimeStep(begin=self.step.begin, end=other.step.end)
-        for id, state in other.player_state:
+        for id, state in other.player_state.items():
             self.player_state[id].apply(state)
 
     def diff(self, other: 'GameStateDiff') -> 'GameStateDiff':
-        if other.step.begin < self.step.end:
+        if other.step.end < self.step.end:
             raise RuntimeError("invalid order of game states to diff")
 
         diff_state = GameStateDiff(TimeStep(self.step.end, other.step.end))
-        for id, state in self.player_state:
+        for id, state in self.player_state.items():
             diff_state.player_state[id] = other.player_state[id].diff(self.player_state[id])
             list(self.player_state.keys()).sort()
 
         return diff_state
 
     @classmethod
-    def empty(cls):
-        return cls(TimeStep(begin=0, end=0))
+    def empty(cls, player_ids=[]):
+        game_state = cls(TimeStep(begin=0, end=0))
+        for id in player_ids:
+            game_state.player_state[id] = PlayerStateDiff.empty(id)
+        return game_state

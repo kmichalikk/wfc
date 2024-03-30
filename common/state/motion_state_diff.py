@@ -14,7 +14,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.angle: float = 0
 
         self.active_inputs: Vec3 = Vec3(0, 0, 0)
-        self.acceleration_rate = 0.01
+        self.acceleration_rate = 0.5
         self.damping = 0.01
 
     def apply(self, other: 'MotionStateDiff'):
@@ -25,7 +25,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.angle += other.angle
 
     def diff(self, other: 'MotionStateDiff') -> 'MotionStateDiff':
-        if other.step.begin < self.step.end:
+        if other.step.end < self.step.end:
             raise RuntimeError("invalid order of game states to diff")
 
         diff_state = MotionStateDiff(
@@ -66,12 +66,31 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
     def update(self):
         """ updates motion, makes sense only for full diffs (step.begin == 0) """
         dt = globalClock.get_dt()
-        self.velocity.set_x((self.velocity.get_x() + self.acceleration.get_x()) * self.damping ** dt)
-        self.velocity.set_y((self.velocity.get_y() + self.acceleration.get_y()) * self.damping ** dt)
+        self.velocity.set_x((self.velocity.get_x() + self.acceleration.get_x() * dt) * self.damping ** dt)
+        self.velocity.set_y((self.velocity.get_y() + self.acceleration.get_y() * dt) * self.damping ** dt)
         self.position.set_x(self.position.get_x() + self.velocity.get_x() * self.damping ** dt)
         self.position.set_y(self.position.get_y() + self.velocity.get_y() * self.damping ** dt)
         if self.velocity.length() > 0.01:
             self.angle = -self.velocity.normalized().signed_angle_deg(Vec3(0, 1, 0), Vec3(0, 0, 1))
+
+    def cut_begin(self, new_begin: float):
+        """ simple approximation when we need part of the motion_diff towards the end """
+        if new_begin < self.step.begin:
+            return self
+
+        # new/old ratio
+        t = (self.step.end - new_begin) / (self.step.end - self.step.begin)
+        print(t)
+        return MotionStateDiff(
+            TimeStep(
+                begin=new_begin,
+                end=self.step.end
+            ),
+            self.position * t,
+            self.velocity * (1 - (1-t)**2),
+            self.acceleration,
+            self.player_id
+        )
 
     def update_input(self, input: Input):
         match input:

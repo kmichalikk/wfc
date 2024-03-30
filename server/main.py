@@ -7,14 +7,13 @@ from direct.showbase.ShowBase import ShowBase
 from direct.task.TaskManagerGlobal import taskMgr
 from panda3d.core import Vec3
 
-from common.collision.border import Border
-from common.collision.collision_object import CollisionObject
 from common.collision.setup import setup_collisions
-from common.config.game_config import GameConfig
+
+from common.config import FRAMETIME
 from common.player.player_controller import PlayerController
+from common.state.game_config import GameConfig
 from common.state.game_state_diff import GameStateDiff
 from common.state.player_state_diff import PlayerStateDiff
-from common.tiles.tile_controller import create_new_tile, collision_shapes
 from common.tiles.tile_node_path_factory import TileNodePathFactory
 from common.connection.udp_connection_thread import UDPConnectionThread
 from common.transfer.network_transfer_builder import NetworkTransferBuilder
@@ -130,7 +129,7 @@ class Server(ShowBase):
         if self.view:
             player_collider.show()
 
-        taskMgr.add(new_player_controller.update_position, "update player position")
+        taskMgr.add(new_player_controller.task_update_position, "update player position")
 
         return new_player_controller
 
@@ -155,8 +154,9 @@ class Server(ShowBase):
 
 
 if __name__ == "__main__":
+    # server = Server('127.0.0.1', 7654, True)
     server = Server('127.0.0.1', 7654)
-    server.set_sleep(0.016)
+    server.set_sleep(FRAMETIME)
     server.listen()
     print(f"[INFO] Starting game loop")
     server.run()

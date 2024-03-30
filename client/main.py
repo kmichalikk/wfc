@@ -3,8 +3,9 @@ import simplepbr
 from direct.showbase.ShowBase import ShowBase
 from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
-from common.config.game_config import GameConfig
-from common.state.game_state_diff import GameStateDiff
+
+from common.config import FRAMETIME
+from common.state.game_config import GameConfig
 from common.state.player_state_diff import PlayerStateDiff
 from common.transfer.network_transfer import NetworkTransfer
 from common.typings import Input
@@ -20,15 +21,17 @@ class Game(ShowBase):
         self.connection_manager.subscribe_for_game_state_change(self.game_state_change)
         self.connection_manager.subscribe_for_new_player(self.new_player_handler)
         self.game_manager = GameManager()
-        self.game_state = GameStateDiff.empty()
+        self.ready = False
 
     def ready_handler(self, game_config: GameConfig):
         self.game_manager.setup_map(self, game_config.tiles, game_config.size)
         for state in game_config.player_states:
             self.game_manager.setup_player(self, state, game_config.id == state.id)
+        self.ready = True
 
     def game_state_change(self, game_state_transfer: NetworkTransfer):
-        self.game_manager.sync_game_state(game_state_transfer)
+        if self.ready:
+            self.game_manager.sync_game_state(game_state_transfer)
 
     def new_player_handler(self, player_state: PlayerStateDiff):
         print("[INFO] New player with id={}".format(player_state.id))
@@ -50,5 +53,5 @@ class Game(ShowBase):
 
 if __name__ == "__main__":
     game = Game()
-    game.set_sleep(0.016)
+    game.set_sleep(FRAMETIME)
     game.run()
