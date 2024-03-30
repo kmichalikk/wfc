@@ -47,5 +47,4 @@ class UDPConnectionThread(Thread):
                 self.lock.acquire()
                 transfer = self.outgoing.get()
                 self.lock.release()
-                print("[UDP] Sending {} bytes".format(len(transfer.get_payload())))
                 self.udp_socket.sendto(transfer.get_payload(), transfer.get_destination())

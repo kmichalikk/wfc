@@ -8,7 +8,10 @@ from client.builder import setup_map, setup_player
 from client.connection.connection_manager import ConnectionManager
 from common.config.game_config import GameConfig
 from common.player.player_controller import PlayerController
-from common.typings import Input
+from common.state.game_state_diff import GameStateDiff
+from common.transfer.network_transfer import NetworkTransfer
+from common.typings import Input, TimeStep
+
 
 class Game(ShowBase):
     def __init__(self):
@@ -20,15 +23,17 @@ class Game(ShowBase):
         self.player: Union[PlayerController, None] = None
         self.connection_manager = ConnectionManager(('127.0.0.1', 7654))
         self.connection_manager.wait_for_connection(self.ready_handler)
+        self.connection_manager.subscribe_for_game_state_change(self.game_state_change)
+        self.game_state = GameStateDiff(TimeStep(begin=0, end=0))
 
     def ready_handler(self, game_config: GameConfig):
         setup_map(self, game_config.tiles)
-        setup_player(self, game_config.player_position)
+        setup_player(self, game_config.player_state)
+        self.game_state.player_state[self.player.get_id()] = self.player.get_state()
 
-        player_collider = self.player.colliders[0]
-        self.cTrav.addCollider(player_collider, self.pusher)
-        self.pusher.addCollider(player_collider, player_collider)
-        self.pusher.setHorizontal(True)
+    def game_state_change(self, game_state_transfer: NetworkTransfer):
+        self.game_state.restore(game_state_transfer)
+        self.player.state.restore(game_state_transfer)
 
     def attach_input(self):
         self.accept("w", lambda: self.handle_input("+forward"))
@@ -42,5 +47,4 @@ class Game(ShowBase):
 
     def handle_input(self, input: Input):
         if self.player is not None:
-            self.player.update_input(input)
             self.connection_manager.send_input_update(input)

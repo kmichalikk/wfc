@@ -16,9 +16,7 @@ class Messages(IntEnum):
     HELLO_OK = auto()
     FIND_ROOM = auto()
     FIND_ROOM_OK = auto()
-    ACCEPT_ROOM = auto()
-    ACCEPT_ROOM_OK = auto()
-    ACCEPT_ROOM_FAIL = auto()
+    FIND_ROOM_FAIL = auto()
     LEAVE_ROOM = auto()
     GLOBAL_STATE = auto()
     UPDATE_INPUT = auto()
@@ -27,7 +25,6 @@ class Messages(IntEnum):
 class TimeStep(NamedTuple):
     begin: float
     end: float
-    index: int
 
 
 class SupportsBuildingNetworkTransfer(Protocol):

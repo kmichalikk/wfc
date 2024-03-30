@@ -11,7 +11,7 @@ class NetworkTransferBuilder(SupportsBuildingNetworkTransfer):
         self.destination = ("", 0)
         self.source = ("", 0)
 
-    def __cleanup(self):
+    def cleanup(self):
         self.data = {}
         self.destination = ("", 0)
         self.source = ("", 0)
@@ -25,16 +25,17 @@ class NetworkTransferBuilder(SupportsBuildingNetworkTransfer):
     def set_source(self, address: Address):
         self.source = address
 
-    def encode(self) -> NetworkTransfer:
+    def encode(self, reset=True) -> NetworkTransfer:
         transfer = NetworkTransfer()
         transfer.payload = pickle.dumps(self.data)
         transfer.destination = self.destination
-        self.__cleanup()
+        if reset:
+            self.cleanup()
         return transfer
 
     def decode(self, payload: bytes) -> NetworkTransfer:
         transfer = NetworkTransfer()
         transfer.data = pickle.loads(payload)
         transfer.source = self.source
-        self.__cleanup()
+        self.cleanup()
         return transfer

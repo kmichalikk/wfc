@@ -18,7 +18,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.damping = 0.01
 
     def apply(self, other: 'MotionStateDiff'):
-        self.step = TimeStep(begin=self.step.begin, end=other.step.end, index=other.step.index)
+        self.step = TimeStep(begin=self.step.begin, end=other.step.end)
         self.position += other.position
         self.velocity += other.velocity
         self.acceleration += other.acceleration
@@ -29,7 +29,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
             raise RuntimeError("invalid order of game states to diff")
 
         diff_state = MotionStateDiff(
-            TimeStep(self.step.end, other.step.end, other.step.index),
+            TimeStep(self.step.end, other.step.end),
             other.position - self.position,
             other.velocity - self.velocity,
             other.acceleration - self.acceleration,
@@ -42,10 +42,10 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
     def transfer(self, builder: SupportsBuildingNetworkTransfer):
         builder.add(
             f"m{self.player_id}step",
-            f"{self.step.begin} {self.step.end} {self.step.index}"
+            f"{self.step.begin} {self.step.end}"
         )
         builder.add(f"m{self.player_id}px", str(self.position.get_x()))
-        builder.add(f"m{self.player_id}px", str(self.position.get_y()))
+        builder.add(f"m{self.player_id}py", str(self.position.get_y()))
         builder.add(f"m{self.player_id}vx", str(self.velocity.get_x()))
         builder.add(f"m{self.player_id}vy", str(self.velocity.get_y()))
         builder.add(f"m{self.player_id}ax", str(self.acceleration.get_x()))
@@ -54,14 +54,14 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
     def restore(self, transfer):
         step = transfer.get(f"p{self.player_id}step").split(" ")
-        self.step = TimeStep(float(step[0]), float(step[1]), int(step[2]))
+        self.step = TimeStep(float(step[0]), float(step[1]))
         self.position.set_x(float(transfer.get(f"m{self.player_id}px")))
         self.position.set_y(float(transfer.get(f"m{self.player_id}py")))
         self.velocity.set_x(float(transfer.get(f"m{self.player_id}vx")))
         self.velocity.set_y(float(transfer.get(f"m{self.player_id}vy")))
         self.acceleration.set_x(float(transfer.get(f"m{self.player_id}ax")))
         self.acceleration.set_y(float(transfer.get(f"m{self.player_id}ay")))
-        self.angle = float(transfer.get(f"m{self.player_id}ay"))
+        self.angle = float(transfer.get(f"m{self.player_id}ang"))
 
     def update(self):
         """ updates motion, makes sense only for full diffs (step.begin == 0) """

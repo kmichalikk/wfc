@@ -5,11 +5,12 @@ from direct.task.TaskManagerGlobal import taskMgr
 from panda3d.core import Vec3
 
 from common.config.game_config import GameConfig
-from common.config.player_config import PlayerConfig
 from common.connection.udp_connection_thread import UDPConnectionThread
 from common.state.game_state_diff import GameStateDiff
+from common.state.player_state_diff import PlayerStateDiff
+from common.transfer.network_transfer import NetworkTransfer
 from common.transfer.network_transfer_builder import NetworkTransferBuilder
-from common.typings import Address, Messages
+from common.typings import Address, Messages, TimeStep
 
 
 class ConnectionManager(DirectObject):
@@ -32,10 +33,10 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.add("type", Messages.FIND_ROOM)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
-    def subscribe_for_game_state_change(self, subscriber: Callable[[GameStateDiff], None]):
-        pass
+    def subscribe_for_game_state_change(self, subscriber: Callable[[NetworkTransfer], None]):
+        self.game_state_change_subscriber = subscriber
 
-    def subscribe_for_new_player(self, subscriber: Callable[[PlayerConfig], None]):
+    def subscribe_for_new_player(self, subscriber: Callable[[PlayerStateDiff], None]):
         pass
 
     def send_input_update(self, input: str):
@@ -49,10 +50,13 @@ class ConnectionManager(DirectObject):
             type = transfer.get("type")
             if type == Messages.FIND_ROOM_OK:
                 print("[INFO] Room found")
-                game_config = GameConfig(None, Vec3(0, 0, 0))
+                game_config = GameConfig(
+                    None,
+                    PlayerStateDiff(TimeStep(begin=0, end=0), transfer.get("id"))
+                )
                 game_config.restore(transfer)
                 self.ready_handler(game_config)
             elif type == Messages.GLOBAL_STATE:
-                self.game_state_change_subscriber(transfer.get("game_state_diff"))
+                self.game_state_change_subscriber(transfer)
 
         return task.cont

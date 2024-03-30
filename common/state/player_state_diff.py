@@ -18,7 +18,7 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.id: str = id
 
     def apply(self, other: 'PlayerStateDiff'):
-        self.step = TimeStep(begin=self.step.begin, end=other.step.end, index=other.step.index)
+        self.step = TimeStep(begin=self.step.begin, end=other.step.end)
         self.motion_state.apply(other.motion_state)
         self.slot = other.slot
 
@@ -26,7 +26,7 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
         if other.step.begin < self.step.end:
             raise RuntimeError("invalid order of game states to diff")
 
-        diff_state = PlayerStateDiff(TimeStep(self.step.end, other.step.end, other.step.index))
+        diff_state = PlayerStateDiff(TimeStep(self.step.end, other.step.end))
         diff_state.motion_state = other.motion_state.diff(self.motion_state)
         diff_state.slot = other.slot
 
@@ -35,14 +35,14 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
     def transfer(self, builder: SupportsBuildingNetworkTransfer):
         builder.add(
             f"p{self.id}step",
-            f"{self.step.begin} {self.step.end} {self.step.index}"
+            f"{self.step.begin} {self.step.end}"
         )
         builder.add(f"p{self.id}slot", self.slot)
         self.motion_state.transfer(builder)
 
     def restore(self, transfer):
         step = transfer.get(f"p{self.id}step").split(" ")
-        self.step = TimeStep(float(step[0]), float(step[1]), int(step[2]))
+        self.step = TimeStep(float(step[0]), float(step[1]))
         self.slot = transfer.get(f"p{self.id}slot")
         self.motion_state.restore(transfer)
 
