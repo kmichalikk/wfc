@@ -36,3 +36,7 @@ class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
             list(self.player_state.keys()).sort()
 
         return diff_state
+
+    @classmethod
+    def empty(cls):
+        return cls(TimeStep(begin=0, end=0))

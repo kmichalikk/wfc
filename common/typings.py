@@ -13,13 +13,14 @@ Address = tuple[Union[str, None], Union[int, None]]  # (address, port)
 
 class Messages(IntEnum):
     HELLO = auto()
-    HELLO_OK = auto()
+    KEEP_ALIVE = auto()
     FIND_ROOM = auto()
     FIND_ROOM_OK = auto()
     FIND_ROOM_FAIL = auto()
     LEAVE_ROOM = auto()
     GLOBAL_STATE = auto()
     UPDATE_INPUT = auto()
+    NEW_PLAYER = auto()
 
 
 class TimeStep(NamedTuple):

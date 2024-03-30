@@ -62,9 +62,17 @@ class Server(ShowBase):
                 self.next_id += 1
                 self.network_transfer_builder.set_destination(transfer.get_source())
                 self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
-                game_config = GameConfig(self.tiles, new_player_controller.state)
+                game_config = GameConfig(
+                    self.tiles,
+                    new_player_controller.get_id(),
+                    [player.get_state() for player in self.active_players.values()]
+                )
                 game_config.transfer(self.network_transfer_builder)
                 self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+                self.broadcast_new_player(
+                    new_player_controller.get_id(),
+                    new_player_controller.get_state()
+                )
             elif type == Messages.UPDATE_INPUT:
                 print("[INFO] Update input")
                 if transfer.get_source() in self.active_players:
@@ -87,6 +95,25 @@ class Server(ShowBase):
         self.network_transfer_builder.cleanup()
         return task.cont
 
+    def broadcast_player_disconnected(self, task):
+        # todo: client is active as long as it sends KEEP_ALIVE from time to time
+        #       if it haven't send anything for a minute, then remove it and notify others
+        pass
+
+    def broadcast_new_player(self, player_id, state):
+        self.network_transfer_builder.add("type", Messages.NEW_PLAYER)
+        self.network_transfer_builder.add("id", player_id)
+        state.transfer(self.network_transfer_builder)
+        print("[INFO] Notifying players about new player")
+        for address, player in self.active_players.items():
+            if player.get_id() == player_id:
+                continue
+            self.network_transfer_builder.set_destination(address)
+            self.udp_connection.enqueue_transfer(
+                self.network_transfer_builder.encode(reset=False)
+            )
+        self.network_transfer_builder.cleanup()
+
     def __add_new_player(self, address: Address, id: str) -> PlayerController:
         new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id)
         new_player_state.set_position(self.player_positions[0])
@@ -106,7 +133,6 @@ class Server(ShowBase):
         return new_player_controller
 
     def __setup_collisions(self):
-        # todo: remove dependency on models - we don't render anything server-side
         self.cTrav = p3d.CollisionTraverser()
         self.pusher = p3d.CollisionHandlerPusher()
         self.pusher.setHorizontal(True)

@@ -1,16 +1,13 @@
-from typing import Union
-
 import simplepbr
 
 from direct.showbase.ShowBase import ShowBase
-
-from client.builder import setup_map, setup_player
+from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
 from common.config.game_config import GameConfig
-from common.player.player_controller import PlayerController
 from common.state.game_state_diff import GameStateDiff
+from common.state.player_state_diff import PlayerStateDiff
 from common.transfer.network_transfer import NetworkTransfer
-from common.typings import Input, TimeStep
+from common.typings import Input
 
 
 class Game(ShowBase):
@@ -18,22 +15,24 @@ class Game(ShowBase):
         ShowBase.__init__(self)
         simplepbr.init()
 
-        self.map_size = 10
-        self.players_count = 4
-        self.player: Union[PlayerController, None] = None
         self.connection_manager = ConnectionManager(('127.0.0.1', 7654))
         self.connection_manager.wait_for_connection(self.ready_handler)
         self.connection_manager.subscribe_for_game_state_change(self.game_state_change)
-        self.game_state = GameStateDiff(TimeStep(begin=0, end=0))
+        self.connection_manager.subscribe_for_new_player(self.new_player_handler)
+        self.game_manager = GameManager()
+        self.game_state = GameStateDiff.empty()
 
     def ready_handler(self, game_config: GameConfig):
-        setup_map(self, game_config.tiles)
-        setup_player(self, game_config.player_state)
-        self.game_state.player_state[self.player.get_id()] = self.player.get_state()
+        for state in game_config.player_states:
+            self.game_manager.setup_player(self, state, game_config.id == state.id)
+        self.game_manager.setup_map(self, game_config.tiles)
 
     def game_state_change(self, game_state_transfer: NetworkTransfer):
-        self.game_state.restore(game_state_transfer)
-        self.player.state.restore(game_state_transfer)
+        self.game_manager.sync_game_state(game_state_transfer)
+
+    def new_player_handler(self, player_state: PlayerStateDiff):
+        print("[INFO] New player with id={}".format(player_state.id))
+        self.game_manager.setup_player(self, player_state)
 
     def attach_input(self):
         self.accept("w", lambda: self.handle_input("+forward"))
@@ -46,5 +45,9 @@ class Game(ShowBase):
         self.accept("a-up", lambda: self.handle_input("-left"))
 
     def handle_input(self, input: Input):
-        if self.player is not None:
-            self.connection_manager.send_input_update(input)
+        self.connection_manager.send_input_update(input)
+
+
+if __name__ == "__main__":
+    game = Game()
+    game.run()

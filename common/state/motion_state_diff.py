@@ -86,3 +86,13 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         normalized_inputs = self.active_inputs.normalized()
         self.acceleration.set_x(normalized_inputs.get_x() * self.acceleration_rate)
         self.acceleration.set_y(normalized_inputs.get_y() * self.acceleration_rate)
+
+    @classmethod
+    def empty(cls, player_id: str):
+        return cls(
+            TimeStep(begin=0, end=0),
+            Vec3(0, 0, 0),
+            Vec3(0, 0, 0),
+            Vec3(0, 0, 0),
+            player_id
+        )

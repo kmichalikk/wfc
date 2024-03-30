@@ -7,13 +7,7 @@ from common.typings import SupportsDiff, SupportsNetworkTransfer, Item, TimeStep
 class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
     def __init__(self, step: TimeStep, id: str):
         self.step = step
-        self.motion_state: MotionStateDiff = MotionStateDiff(
-            self.step,
-            Vec3(0, 0, 0),
-            Vec3(0, 0, 0),
-            Vec3(0, 0, 0),
-            id
-        )
+        self.motion_state: MotionStateDiff = MotionStateDiff.empty(id)
         self.slot: Item = "empty"
         self.id: str = id
 
@@ -58,3 +52,7 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
     def update_motion(self):
         """ works only for full diffs (step.begin == 0) """
         self.motion_state.update()
+
+    @classmethod
+    def empty(cls, player_id: str):
+        return cls(TimeStep(begin=0, end=0), player_id)
