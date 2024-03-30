@@ -7,15 +7,17 @@ from common.typings import SupportsNetworkTransfer, SupportsBuildingNetworkTrans
 
 
 class GameConfig(SupportsNetworkTransfer):
-    def __init__(self, tiles, id: str, states: list[PlayerStateDiff]):
+    def __init__(self, tiles, id: str, states: list[PlayerStateDiff], size: int):
         self.tiles = tiles
         self.id = id
         self.all_ids = []
         self.player_states = states
+        self.size = size
 
     def transfer(self, builder: SupportsBuildingNetworkTransfer):
         builder.add("gctiles", pickle.dumps(self.tiles).hex())
         builder.add("id", self.id)
+        builder.add("size", self.size)
         builder.add("ids", ",".join([state.id for state in self.player_states]))
         for state in self.player_states:
             state.transfer(builder)
@@ -24,6 +26,7 @@ class GameConfig(SupportsNetworkTransfer):
         self.tiles = pickle.loads(bytes.fromhex(transfer.get("gctiles")))
         self.all_ids = transfer.get("ids").split(",")
         self.id = transfer.get("id")
+        self.size = transfer.get("size")
         for id in self.all_ids:
             state = PlayerStateDiff.empty(id)
             state.restore(transfer)
@@ -31,4 +34,4 @@ class GameConfig(SupportsNetworkTransfer):
 
     @classmethod
     def empty(cls):
-        return cls([], "0", [])
+        return cls([], "0", [], 10)

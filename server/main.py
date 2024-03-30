@@ -9,6 +9,7 @@ from panda3d.core import Vec3
 
 from common.collision.border import Border
 from common.collision.collision_object import CollisionObject
+from common.collision.setup import setup_collisions
 from common.config.game_config import GameConfig
 from common.player.player_controller import PlayerController
 from common.state.game_state_diff import GameStateDiff
@@ -65,7 +66,8 @@ class Server(ShowBase):
                 game_config = GameConfig(
                     self.tiles,
                     new_player_controller.get_id(),
-                    [player.get_state() for player in self.active_players.values()]
+                    [player.get_state() for player in self.active_players.values()],
+                    self.map_size
                 )
                 game_config.transfer(self.network_transfer_builder)
                 self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
@@ -133,19 +135,7 @@ class Server(ShowBase):
         return new_player_controller
 
     def __setup_collisions(self):
-        self.cTrav = p3d.CollisionTraverser()
-        self.pusher = p3d.CollisionHandlerPusher()
-        self.pusher.setHorizontal(True)
-
-        self.border = Border(self.render, self.map_size)
-        self.tile_colliders = []
-
-        tile: p3d.NodePath
-        for tile_data in self.tiles:
-            tile = create_new_tile(self.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"])
-            tile.reparent_to(self.render)
-            self.tile_colliders.append(CollisionObject(tile, tile_data["node_path"],
-                                                       collision_shapes[tile_data["node_path"]]))
+        setup_collisions(self, self.tiles, self.map_size)
 
     def __setup_view(self):
         simplepbr.init()

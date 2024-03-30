@@ -23,9 +23,9 @@ class Game(ShowBase):
         self.game_state = GameStateDiff.empty()
 
     def ready_handler(self, game_config: GameConfig):
+        self.game_manager.setup_map(self, game_config.tiles, game_config.size)
         for state in game_config.player_states:
             self.game_manager.setup_player(self, state, game_config.id == state.id)
-        self.game_manager.setup_map(self, game_config.tiles)
 
     def game_state_change(self, game_state_transfer: NetworkTransfer):
         self.game_manager.sync_game_state(game_state_transfer)
@@ -50,4 +50,5 @@ class Game(ShowBase):
 
 if __name__ == "__main__":
     game = Game()
+    game.set_sleep(0.016)
     game.run()
