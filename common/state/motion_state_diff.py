@@ -14,7 +14,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.angle: float = 0
 
         self.active_inputs: Vec3 = Vec3(0, 0, 0)
-        self.acceleration_rate = 0.8
+        self.acceleration_rate = 0.5
         self.damping = 0.01
 
     def apply(self, other: 'MotionStateDiff'):

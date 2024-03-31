@@ -65,7 +65,6 @@ class GameManager:
             game_state_transfer = self.server_game_state_transfer_queue.get()
 
         self.last_game_state = self.game_state.clone()
-        # self.update_positions()
         if game_state_transfer is not None:
             self.update_positions_and_reconciliate(game_state_transfer)
         else:
@@ -81,27 +80,16 @@ class GameManager:
         while len(self.game_state_diffs) > 0:
             state = self.game_state_diffs.popleft()
             if state.step.end < server_game_state.step.end:
+                # print("[DIFF] Discarding", state.step)
                 continue
             else:
-                # print("[DIFF] Discarded outdated diffs, {} left".format(
-                #     len(self.game_state_diffs) + 1
-                # ))
                 server_game_state.apply(state)
+                # print("[DIFF] Applying", state.step)
                 while len(self.game_state_diffs) > 0:
                     state = self.game_state_diffs.popleft()
                     server_game_state.apply(state)
+                    # print("[DIFF] Applying", state.step)
                 break
-        else:
-            # print("[DIFF] Discarded outdated diffs, up to date".format(
-            #     time.time() - server_game_state.step.end,
-            #     len(self.game_state_diffs)
-            # ))
-            pass
-        # previous_motion_state = self.main_player.state.motion_state.clone()
-        # self.game_state = server_game_state
-        # self.game_state_diffs.append(self.game_state.clone())
-        # self.main_player.update_position()
-        # last_motion_state = previous_motion_state.diff(self.main_player.state.motion_state)
         for player in self.players.values():
             if player is not self.main_player:
                 player.replace_state(server_game_state.player_state[player.get_id()])
@@ -109,14 +97,12 @@ class GameManager:
             else:
                 self.main_player_server_view \
                     .replace_state(server_game_state.player_state[player.get_id()])
-                self.main_player.update_position()
                 self.main_player_server_view.sync_position()
+                self.main_player.update_position()
                 lerp = self.main_player.state.motion_state \
-                    .lerp(0.4, self.main_player_server_view.state.motion_state)
+                    .lerp(0.1, self.main_player_server_view.state.motion_state)
                 if lerp.position.length() > 0.001:
                     self.main_player.state.motion_state.apply(lerp)
-        # correction = last_motion_state.cut_begin(server_game_state.step.end)
-        # self.main_player.state.motion_state.apply(correction)
 
     def update_positions(self):
         last_player_position = self.main_player.state.clone()
@@ -125,7 +111,7 @@ class GameManager:
         self.main_player_server_view.state.apply(diff)
         self.main_player_server_view.sync_position()
         lerp = self.main_player.state.motion_state \
-            .lerp(0.4, self.main_player_server_view.state.motion_state)
+            .lerp(0.1, self.main_player_server_view.state.motion_state)
 
         if lerp.position.length() > 0.001:
             self.main_player.state.motion_state.apply(lerp)
@@ -137,8 +123,6 @@ class GameManager:
         self.game_state_diffs.append(
             self.last_game_state.diff(self.game_state)
         )
-        # while len(self.game_state_diffs) > 0 and self.game_state_diffs[0].step.end + 0.5 < time.time():
-        #     self.game_state_diffs.popleft()
         return task.cont
 
     def queue_server_game_state(self, transfer: NetworkTransfer):

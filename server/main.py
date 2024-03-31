@@ -84,7 +84,7 @@ class Server(ShowBase):
 
     def broadcast_global_state(self, task):
         self.index += 1
-        if self.index % 2 != 0:
+        if self.index % 3 != 0:
             return task.cont
 
         game_state = GameStateDiff(TimeStep(begin=0, end=time.time()))

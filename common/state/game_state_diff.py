@@ -17,6 +17,7 @@ class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
     def restore(self, transfer):
         step = transfer.get("game_step").split(" ")
+        self.step = TimeStep(float(step[0]), float(step[1]))
         for player in self.player_state.values():
             player.restore(transfer)
 
