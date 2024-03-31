@@ -46,11 +46,7 @@ class PlayerController(CollisionObject):
         self.update_time_step()
 
     def task_update_position(self, task):
-        self.state.set_position(self.colliders[0].get_pos())
-        self.state.update_motion()
-        self.colliders[0].set_pos(self.state.get_position())
-        self.model.set_pos(self.state.get_position())
-        self.model.set_h(self.state.get_model_angle())
+        self.update_position()
         return task.cont
 
     def update_time_step(self):

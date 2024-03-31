@@ -8,14 +8,25 @@ from common.transfer.network_transfer_builder import NetworkTransferBuilder
 
 
 class UDPConnectionThread(Thread):
+    """ Thread class comes from panda3d - beware incompatibilities! """
     def __init__(self, addr, port):
         super().__init__()
         self.addr = addr
         self.port = port
+
+        # set up a way to safely communicate between threads
+        # incoming = transfer received from clients
+        # outgoing = queued transfers to send
         self.lock = Lock()
         self.incoming: list[NetworkTransfer] = []
         self.outgoing: Queue[NetworkTransfer] = Queue()
+
+        # smart way to handle both incoming and outgoing transfers
+        # pipe_in sends control signal to pipe_out which is selected
+        # along with data from clients to handle both cases in one waiting loop
         self.pipe_out_socket, self.pipe_in_socket = socketpair()
+
+        # set up IP sockets
         self.udp_socket = socket(AF_INET, SOCK_DGRAM)
         self.udp_socket.bind((self.addr, self.port))
         self.network_transfer_builder = NetworkTransferBuilder()
@@ -31,10 +42,12 @@ class UDPConnectionThread(Thread):
         self.lock.acquire()
         self.outgoing.put(transfer)
         self.lock.release()
+        # control message to send data out to client
         self.pipe_in_socket.send(b"\x00")
 
     def run(self):
         while True:
+            # handle incoming or outgoing depending on which socket got data first
             ready_sockets, _, _ = select([self.udp_socket, self.pipe_out_socket], [], [])
             if self.udp_socket in ready_sockets:
                 payload, addr = self.udp_socket.recvfrom(10240)

@@ -9,8 +9,7 @@ from direct.task.TaskManagerGlobal import taskMgr
 from panda3d.core import Vec3, ClockObject
 
 from common.collision.setup import setup_collisions
-
-from common.config import FRAMERATE
+from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT
 from common.player.player_controller import PlayerController
 from common.state.game_config import GameConfig
 from common.state.game_state_diff import GameStateDiff
@@ -27,6 +26,7 @@ sys.path.append("../common")
 class Server(ShowBase):
     def __init__(self, address, port, view=False):
         if view:
+            # show window for debug processes, slows down everything
             super().__init__()
         else:
             super().__init__(windowType="none")
@@ -36,11 +36,10 @@ class Server(ShowBase):
         self.node_path_factory = TileNodePathFactory(self.loader)
         self.network_transfer_builder = NetworkTransferBuilder()
         self.active_players: dict[Address, PlayerController] = {}
-        self.next_id = 0
-        self.map_size = 10
-        self.index = 0
+        self.next_player_id = 0
+        self.frames_processed = 0
         print("[INFO] Starting WFC map generation")
-        self.tiles, self.player_positions = start_wfc(self.map_size, 1)
+        self.tiles, self.player_positions = start_wfc(MAP_SIZE, 1)
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
@@ -59,47 +58,56 @@ class Server(ShowBase):
                 print("[INFO] New client")
             elif type == Messages.FIND_ROOM:
                 print("[INFO] Room requested")
-                new_player_controller = self.__add_new_player(transfer.get_source(), str(self.next_id))
-                self.network_transfer_builder.add("id", str(self.next_id))
-                self.next_id += 1
-                self.network_transfer_builder.set_destination(transfer.get_source())
-                self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
-                game_config = GameConfig(
-                    self.tiles,
-                    new_player_controller.get_id(),
-                    [player.get_state() for player in self.active_players.values()],
-                    self.map_size
-                )
-                game_config.transfer(self.network_transfer_builder)
-                self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-                self.broadcast_new_player(
-                    new_player_controller.get_id(),
-                    new_player_controller.get_state()
-                )
+                self.__find_room_for(transfer.get_source())
             elif type == Messages.UPDATE_INPUT:
                 print("[INFO] Update input")
                 if transfer.get_source() in self.active_players:
                     self.active_players[transfer.get_source()].update_input(transfer.get("input"))
         return task.cont
 
+    def __find_room_for(self, address):
+        new_player_controller = self.__add_new_player(address, str(self.next_player_id))
+        self.network_transfer_builder.add("id", str(self.next_player_id))
+        self.next_player_id += 1
+        self.network_transfer_builder.set_destination(address)
+        self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
+        game_config = GameConfig(
+            self.tiles,
+            new_player_controller.get_id(),
+            [player.get_state() for player in self.active_players.values()],
+            MAP_SIZE
+        )
+        # fill game_config
+        game_config.transfer(self.network_transfer_builder)
+        # respond with data and notify other players
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+        self.broadcast_new_player(
+            new_player_controller.get_id(),
+            new_player_controller.get_state()
+        )
+
     def broadcast_global_state(self, task):
-        self.index += 1
-        if self.index % 3 != 0:
+        self.frames_processed += 1
+        if self.frames_processed % 3 != 0:  # 60fps / 3 = tick rate 20
             return task.cont
 
+        # prepare current snapshot of game state
         game_state = GameStateDiff(TimeStep(begin=0, end=time.time()))
-        player: PlayerController
         game_state.player_state \
             = {player.get_id(): player.get_state() for player in self.active_players.values()}
+
         self.network_transfer_builder.add("type", Messages.GLOBAL_STATE)
         game_state.transfer(self.network_transfer_builder)
         address: Address
         for address in self.active_players.keys():
+            # resend the same transfer to all players, change only destination
             self.network_transfer_builder.set_destination(address)
             self.udp_connection.enqueue_transfer(
                 self.network_transfer_builder.encode(reset=False)
             )
+        # reset=False left previous builder state, clean it up after pinging every player
         self.network_transfer_builder.cleanup()
+
         return task.cont
 
     def broadcast_player_disconnected(self, task):
@@ -108,10 +116,10 @@ class Server(ShowBase):
         pass
 
     def broadcast_new_player(self, player_id, state):
+        print("[INFO] Notifying players about new player")
         self.network_transfer_builder.add("type", Messages.NEW_PLAYER)
         self.network_transfer_builder.add("id", player_id)
         state.transfer(self.network_transfer_builder)
-        print("[INFO] Notifying players about new player")
         for address, player in self.active_players.items():
             if player.get_id() == player_id:
                 continue
@@ -119,6 +127,7 @@ class Server(ShowBase):
             self.udp_connection.enqueue_transfer(
                 self.network_transfer_builder.encode(reset=False)
             )
+        # reset=False left previous builder state, clean it up after pinging every player
         self.network_transfer_builder.cleanup()
 
     def __add_new_player(self, address: Address, id: str) -> PlayerController:
@@ -141,8 +150,9 @@ class Server(ShowBase):
         return new_player_controller
 
     def __setup_collisions(self):
-        setup_collisions(self, self.tiles, self.map_size)
+        setup_collisions(self, self.tiles, MAP_SIZE)
 
+    # to be called after __setup_collisions()
     def __setup_view(self):
         simplepbr.init()
         self.disableMouse()
@@ -154,15 +164,15 @@ class Server(ShowBase):
         point_light_node = self.render.attach_new_node(p3d.PointLight("light"))
         point_light_node.set_pos(0, -10, 10)
         self.render.set_light(point_light_node)
-        self.camera.set_pos(Vec3(self.map_size, self.map_size, 5 * self.map_size))
-        self.camera.look_at(Vec3(self.map_size, self.map_size, 0))
+        self.camera.set_pos(Vec3(MAP_SIZE, MAP_SIZE, 5 * MAP_SIZE))
+        self.camera.look_at(Vec3(MAP_SIZE, MAP_SIZE, 0))
         for c in self.tile_colliders:
             c.show()
 
 
 if __name__ == "__main__":
-    # server = Server('127.0.0.1', 7654, True)  # this slows down the whole simulation, debug only
-    server = Server('127.0.0.1', 7654)
+    # server = Server('127.0.0.1', SERVER_PORT, True)  # this slows down the whole simulation, debug only
+    server = Server('127.0.0.1', SERVER_PORT)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()

@@ -47,8 +47,8 @@ class GameManager:
 
     def set_main_player(self, player: PlayerController):
         self.main_player = player
-        self.game.taskMgr.add(self.sync_game_state, "update players positions", sort=1)
-        self.game.taskMgr.add(self.game_state_snapshot, "store game state history up to .5 sec", sort=2)
+        self.game.taskMgr.add(self.sync_game_state, "sync game state", sort=1)
+        self.game.taskMgr.add(self.game_state_snapshot, "store game state diffs", sort=2)
 
         # add collider to main player controller
         player_collider = player.colliders[0]
@@ -110,8 +110,8 @@ class GameManager:
                 self.main_player_server_view.sync_position()
                 self.main_player.update_position()
                 lerp = self.main_player.state.motion_state \
-                    .lerp(0.1, self.main_player_server_view.state.motion_state)
-                if lerp.position.length() > 0.001:
+                    .lerp(0.3, self.main_player_server_view.state.motion_state)
+                if lerp.position.length() > 0.05:
                     self.main_player.state.motion_state.apply(lerp)
 
     def update_positions(self):
@@ -121,9 +121,9 @@ class GameManager:
         self.main_player_server_view.state.apply(diff)
         self.main_player_server_view.sync_position()
         lerp = self.main_player.state.motion_state \
-            .lerp(0.1, self.main_player_server_view.state.motion_state)
+            .lerp(0.3, self.main_player_server_view.state.motion_state)
 
-        if lerp.position.length() > 0.001:
+        if lerp.position.length() > 0.05:
             self.main_player.state.motion_state.apply(lerp)
 
         for player in self.players.values():

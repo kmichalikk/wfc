@@ -8,7 +8,7 @@ from common.typings import Address, SupportsBuildingNetworkTransfer
 class NetworkTransferBuilder(SupportsBuildingNetworkTransfer):
     def __init__(self):
         self.data: dict[str, Union[str, int]] = {}
-        self.destination = ("", 0)
+        self.destination = ("", 0)  # in form of ("127.0.0.1", 1234)
         self.source = ("", 0)
 
     def cleanup(self):

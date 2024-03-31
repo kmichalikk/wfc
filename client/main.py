@@ -2,7 +2,7 @@ import simplepbr
 
 from direct.showbase.ShowBase import ShowBase
 from direct.showbase.ShowBaseGlobal import globalClock
-from panda3d.core import ClockObject
+from panda3d.core import ClockObject, PStatClient, load_prc_file_data
 
 from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
@@ -13,6 +13,14 @@ from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_node_path_factory import TileNodePathFactory
 from common.transfer.network_transfer import NetworkTransfer
 from common.typings import Input
+
+
+load_prc_file_data("", """
+sync-video 0
+yield-timeslice 0
+client-sleep 0
+multi-sleep 0
+""")
 
 
 class Game(ShowBase):
@@ -71,4 +79,5 @@ if __name__ == "__main__":
     game = Game()
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
+    PStatClient.connect()
     game.run()
