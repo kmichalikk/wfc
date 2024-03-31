@@ -13,21 +13,31 @@ from common.typings import Address, Messages
 
 
 class ConnectionManager(DirectObject):
+    """ Proxy for UDP connection thread """
     def __init__(self, server_address: Address):
         super().__init__()
         self.server_address = server_address
-        self.udp_connection = UDPConnectionThread(server_address[0], 0)
-        self.udp_connection.start()
+
+        # set up class fields
         self.network_transfer_builder = NetworkTransferBuilder()
-        self.network_transfer_builder.add("type", Messages.HELLO)
-        self.network_transfer_builder.set_destination(self.server_address)
-        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
         self.ready_handler = lambda _: False
         self.game_state_change_subscriber = lambda _: False
         self.new_player_subscriber = lambda _: False
+
+        # initialize UDP thread
+        self.udp_connection = UDPConnectionThread(server_address[0], 0)
+        self.udp_connection.start()
+
+        # say hello to server
+        self.network_transfer_builder.add("type", Messages.HELLO)
+        self.network_transfer_builder.set_destination(self.server_address)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+        # begin processing of incoming messages
         taskMgr.add(self.process_messages, "process incoming transfers")
 
     def wait_for_connection(self, ready_handler: Callable[[GameConfig], None]):
+        """ Add listener for server sending room information, send a room request """
         self.ready_handler = ready_handler
         self.network_transfer_builder.set_destination(self.server_address)
         self.network_transfer_builder.add("type", Messages.FIND_ROOM)
