@@ -9,6 +9,7 @@ from direct.showbase import ShowBase
 from direct.task import Task
 
 from common.collision.setup import setup_collisions
+from common.config import TIME_STEP
 from common.state.game_state_diff import GameStateDiff
 from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_controller import create_new_tile
@@ -20,13 +21,33 @@ from common.typings import TimeStep
 
 class GameManager:
     def __init__(self, game: ShowBase, node_path_factory: TileNodePathFactory):
+        # all players by ids
         self.players: dict[str, PlayerController] = {}
+
+        # main player displayed model and more accurate invisible model used for reference
         self.main_player: Union[None, PlayerController] = None
         self.main_player_server_view: Union[None, PlayerController] = None
+
+        # frame by frame diffs to apply on server state if it lags behind
         self.game_state_diffs: deque[GameStateDiff] = deque()
+
+        # previous state to calculate diff with current state
         self.last_game_state: GameStateDiff = GameStateDiff(TimeStep(begin=0, end=time.time() - 0.2))
+
+        # current game state
         self.game_state: GameStateDiff = GameStateDiff(TimeStep(begin=0, end=time.time() - 0.1))
-        self.server_game_state_transfer_queue: Queue[NetworkTransfer] = Queue()
+
+        # buffer of server states for entity interpolation
+        self.server_game_state_transfer_deque: deque[GameStateDiff] = deque()
+
+        # flag to set if new server game state is expected to be processed on next frame
+        self.tick_update = False
+
+        # delay for other player state update
+        # it allows for interpolation between previous server states
+        # should be kept relatively low (i.e. 100ms) to not be noticeable
+        self.other_players_delay = 2 * TIME_STEP
+
         self.game = game
         self.node_path_factory = node_path_factory
         self.sync_tasks: dict[str, Task] = {}
@@ -51,9 +72,9 @@ class GameManager:
         self.game.taskMgr.add(self.game_state_snapshot, "store game state diffs", sort=2)
 
         # add collider to main player controller
-        player_collider = player.colliders[0]
-        self.game.cTrav.addCollider(player_collider, self.game.pusher)
-        self.game.pusher.addCollider(player_collider, player_collider)
+        # player_collider = player.colliders[0]
+        # self.game.cTrav.addCollider(player_collider, self.game.pusher)
+        # self.game.pusher.addCollider(player_collider, player_collider)
 
         # add another controller for the player that doesn't directly respond to input
         # but is set to server state as it arrives i.e. every 3 frames and updated afterward
@@ -70,23 +91,21 @@ class GameManager:
         self.main_player_server_view.sync_position()
 
     def sync_game_state(self, task):
-        game_state_transfer = None
-        while not self.server_game_state_transfer_queue.empty():
-            game_state_transfer = self.server_game_state_transfer_queue.get()
-
-        self.last_game_state = self.game_state.clone()
-        if game_state_transfer is not None:
-            self.update_positions_and_reconciliate(game_state_transfer)
+        if self.tick_update:
+            self.tick_update = False
+            server_game_state = self.server_game_state_transfer_deque[-1]
+            self.apply_local_diffs(server_game_state)
+            self.update_positions_and_reconciliate(server_game_state)
         else:
-            self.update_positions()
-
+            self.update_main_player_position()
+        self.interpolate_other_players_positions()
         return task.cont
 
-    def update_positions_and_reconciliate(self, transfer: NetworkTransfer):
-        server_game_state = GameStateDiff.empty(self.game_state.player_state.keys())
-        server_game_state.restore(transfer)
-        # print("[DIFF] Server state at {} vs now {}, history len = {}".format(
-        #     server_game_state.step.end, time.time(), len(self.game_state_diffs)))
+    def apply_local_diffs(self, server_game_state: GameStateDiff):
+        """
+        Applies diffs between the time when server had built
+        the game state and the time data arrived locally
+        """
         while len(self.game_state_diffs) > 0:
             state = self.game_state_diffs.popleft()
             if state.step.end < server_game_state.step.end:
@@ -100,6 +119,14 @@ class GameManager:
                     server_game_state.apply(state)
                     # print("[DIFF] Applying", state.step)
                 break
+
+    def update_positions_and_reconciliate(self, server_game_state: GameStateDiff):
+        """
+        Perform client side reconciliation
+        and smooth out player movement using interpolation
+        """
+        # print("[DIFF] Server state at {} vs now {}, history len = {}".format(
+        #     server_game_state.step.end, time.time(), len(self.game_state_diffs)))
         for player in self.players.values():
             if player is not self.main_player:
                 player.replace_state(server_game_state.player_state[player.get_id()])
@@ -111,10 +138,15 @@ class GameManager:
                 self.main_player.update_position()
                 lerp = self.main_player.state.motion_state \
                     .lerp(0.3, self.main_player_server_view.state.motion_state)
-                if lerp.position.length() > 0.05:
-                    self.main_player.state.motion_state.apply(lerp)
+                self.main_player.state.motion_state.apply(lerp)
+                self.main_player.sync_position()
 
-    def update_positions(self):
+    def update_main_player_position(self):
+        """
+        Interpolate player positions when no server game state update arrived
+        by moving both positions simultaneously and once again
+        reducing the difference by given fraction (lerp)
+        """
         last_player_position = self.main_player.state.clone()
         self.main_player.update_position()
         diff = last_player_position.diff(self.main_player.state)
@@ -122,12 +154,52 @@ class GameManager:
         self.main_player_server_view.sync_position()
         lerp = self.main_player.state.motion_state \
             .lerp(0.3, self.main_player_server_view.state.motion_state)
+        self.main_player.state.motion_state.apply(lerp)
+        self.main_player.sync_position()
 
-        if lerp.position.length() > 0.05:
-            self.main_player.state.motion_state.apply(lerp)
+    def interpolate_other_players_positions(self):
+        """
+        Show other players movement self.other_players_delay ms in the past
+        """
+        if len(self.server_game_state_transfer_deque) == 0:
+            return
 
-        for player in self.players.values():
-            player.sync_position()
+        target_time = time.time() - self.other_players_delay
+        i = 0
+        while i < len(self.server_game_state_transfer_deque):
+            if self.server_game_state_transfer_deque[i].step.end < target_time:
+                i += 1
+            else:
+                break
+        else:
+            # target_time is ahead of all known states - use the most recent
+            state: PlayerStateDiff
+            for id, state in self.server_game_state_transfer_deque[-1].player_state.items():
+                if id == self.main_player.get_id():
+                    continue
+                self.players[id].replace_state(state.clone())
+                self.players[id].sync_position()
+            return
+
+        # i-th state is our best guess
+        # make a diff with prior one, cut it to target_time and apply
+        if i <= 0:
+            # prior state doesn't exist - we can't get diff - use what we have
+            for id, state in self.server_game_state_transfer_deque[i].player_state.items():
+                if id == self.main_player.get_id():
+                    continue
+                self.players[id].replace_state(state.clone())
+                self.players[id].sync_position()
+            return
+        prior_state = self.server_game_state_transfer_deque[i-1].clone()
+        diff = prior_state.diff(self.server_game_state_transfer_deque[i])
+        for id, state in diff.player_state.items():
+            if id == self.main_player.get_id():
+                continue
+            self.players[id].replace_state(prior_state.player_state[id])
+            lerp = state.motion_state.cut_end(target_time)
+            self.players[id].state.motion_state.apply(lerp)
+            self.players[id].sync_position()
 
     def game_state_snapshot(self, task):
         self.game_state_diffs.append(
@@ -136,7 +208,12 @@ class GameManager:
         return task.cont
 
     def queue_server_game_state(self, transfer: NetworkTransfer):
-        self.server_game_state_transfer_queue.put(transfer)
+        server_game_state = GameStateDiff.empty(self.game_state.player_state.keys())
+        server_game_state.restore(transfer)
+        self.server_game_state_transfer_deque.append(server_game_state)
+        while len(self.server_game_state_transfer_deque) > 5:
+            self.server_game_state_transfer_deque.popleft()
+        self.tick_update = True
 
     def setup_map(self, game, tiles, map_size):
         game.disableMouse()

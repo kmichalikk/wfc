@@ -26,6 +26,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
     def diff(self, other: 'MotionStateDiff') -> 'MotionStateDiff':
         if other.step.end < self.step.end:
+            # when it prints too often, it's likely there are bugs in code
             print("invalid order of game states to diff")
 
         diff_state = MotionStateDiff(
@@ -85,18 +86,22 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         if self.velocity.length() > 0.01:
             self.angle = -self.velocity.normalized().signed_angle_deg(Vec3(0, 1, 0), Vec3(0, 0, 1))
 
-    def cut_begin(self, new_begin: float):
-        """ simple approximation when we need part of the motion_diff towards the end """
-        if new_begin < self.step.begin:
+    def cut_end(self, new_end: float):
+        """
+        simple approximation when we need shorter part of the motion_diff
+        useful for short diffs (not beginning from 0)
+        """
+        if new_end > self.step.end:
             return self
 
+        # calculate new/old ratio t between [0, 1] (check for zero division)
         span = self.step.end - self.step.begin
-        # new/old ratio
-        t = (self.step.end - new_begin) / span if span > 0.001 else 0
+        t = (new_end - self.step.begin) / span if span > 0.001 else 0
+
         return MotionStateDiff(
             TimeStep(
-                begin=new_begin,
-                end=self.step.end
+                begin=self.step.begin,
+                end=new_end
             ),
             self.position * t,
             self.velocity * (1 - (1-t)**2),

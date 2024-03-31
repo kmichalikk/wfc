@@ -28,7 +28,8 @@ class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
     def diff(self, other: 'GameStateDiff') -> 'GameStateDiff':
         if other.step.end < self.step.end:
-            raise RuntimeError("invalid order of game states to diff")
+            # when it prints too often, it's likely there are bugs in code
+            print("invalid order of game states to diff")
 
         diff_state = GameStateDiff(TimeStep(self.step.end, other.step.end))
         for id, state in self.player_state.items():

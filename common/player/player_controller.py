@@ -15,7 +15,7 @@ class PlayerController(CollisionObject):
             super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 0.5, 0.25)])
 
         self.model = model
-        if ghost:
+        if ghost:  # comment out to see the server ghost
             self.model.hide()
         self.state = player_state
 

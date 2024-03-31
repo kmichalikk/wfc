@@ -9,7 +9,7 @@ from direct.task.TaskManagerGlobal import taskMgr
 from panda3d.core import Vec3, ClockObject
 
 from common.collision.setup import setup_collisions
-from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT
+from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
 from common.player.player_controller import PlayerController
 from common.state.game_config import GameConfig
 from common.state.game_state_diff import GameStateDiff
@@ -88,7 +88,7 @@ class Server(ShowBase):
 
     def broadcast_global_state(self, task):
         self.frames_processed += 1
-        if self.frames_processed % 3 != 0:  # 60fps / 3 = tick rate 20
+        if self.frames_processed % INV_TICK_RATE != 0:  # i.e. 60fps / 3 = tick rate 20
             return task.cont
 
         # prepare current snapshot of game state
