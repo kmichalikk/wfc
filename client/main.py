@@ -1,10 +1,13 @@
 import simplepbr
 
 from direct.showbase.ShowBase import ShowBase
+from direct.showbase.ShowBaseGlobal import globalClock
+from panda3d.core import ClockObject
+
 from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
 
-from common.config import FRAMETIME
+from common.config import FRAMERATE
 from common.state.game_config import GameConfig
 from common.state.player_state_diff import PlayerStateDiff
 from common.transfer.network_transfer import NetworkTransfer
@@ -31,7 +34,7 @@ class Game(ShowBase):
 
     def game_state_change(self, game_state_transfer: NetworkTransfer):
         if self.ready:
-            self.game_manager.sync_game_state(game_state_transfer)
+            self.game_manager.queue_server_game_state(game_state_transfer)
 
     def new_player_handler(self, player_state: PlayerStateDiff):
         print("[INFO] New player with id={}".format(player_state.id))
@@ -48,10 +51,13 @@ class Game(ShowBase):
         self.accept("a-up", lambda: self.handle_input("-left"))
 
     def handle_input(self, input: Input):
-        self.connection_manager.send_input_update(input)
+        self.game_manager.main_player.update_input(input)
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_input_update(input),
+                                     "send input on next frame")
 
 
 if __name__ == "__main__":
     game = Game()
-    game.set_sleep(FRAMETIME)
+    globalClock.setMode(ClockObject.MLimited)
+    globalClock.setFrameRate(FRAMERATE)
     game.run()

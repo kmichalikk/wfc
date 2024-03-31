@@ -1,3 +1,4 @@
+import time
 from typing import Callable
 
 from direct.showbase.DirectObject import DirectObject
@@ -25,7 +26,6 @@ class ConnectionManager(DirectObject):
         self.game_state_change_subscriber = lambda _: False
         self.new_player_subscriber = lambda _: False
         taskMgr.add(self.process_messages, "process incoming transfers")
-        self.counter = 0
 
     def wait_for_connection(self, ready_handler: Callable[[GameConfig], None]):
         self.ready_handler = ready_handler
@@ -42,6 +42,7 @@ class ConnectionManager(DirectObject):
     def send_input_update(self, input: str):
         self.network_transfer_builder.add("type", Messages.UPDATE_INPUT)
         self.network_transfer_builder.add("input", input)
+        self.network_transfer_builder.add("timestamp", str(time.time()))
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
@@ -54,7 +55,6 @@ class ConnectionManager(DirectObject):
                 game_config.restore(transfer)
                 self.ready_handler(game_config)
             elif type == Messages.GLOBAL_STATE:
-                self.counter += 1
                 self.game_state_change_subscriber(transfer)
             elif type == Messages.NEW_PLAYER:
                 player_state = PlayerStateDiff.empty(transfer.get("id"))

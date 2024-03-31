@@ -17,7 +17,6 @@ class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
     def restore(self, transfer):
         step = transfer.get("game_step").split(" ")
-        self.step = TimeStep(float(step[0]), float(step[1]))
         for player in self.player_state.values():
             player.restore(transfer)
 
@@ -32,7 +31,7 @@ class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
         diff_state = GameStateDiff(TimeStep(self.step.end, other.step.end))
         for id, state in self.player_state.items():
-            diff_state.player_state[id] = other.player_state[id].diff(self.player_state[id])
+            diff_state.player_state[id] = self.player_state[id].diff(other.player_state[id])
             list(self.player_state.keys()).sort()
 
         return diff_state
@@ -43,3 +42,9 @@ class GameStateDiff(SupportsNetworkTransfer, SupportsDiff):
         for id in player_ids:
             game_state.player_state[id] = PlayerStateDiff.empty(id)
         return game_state
+
+    def clone(self):
+        cloned = GameStateDiff(self.step)
+        for id, player_state in self.player_state.items():
+            cloned.player_state[id] = player_state.clone()
+        return cloned

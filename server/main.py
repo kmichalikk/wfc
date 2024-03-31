@@ -4,12 +4,13 @@ import panda3d.core as p3d
 import simplepbr
 
 from direct.showbase.ShowBase import ShowBase
+from direct.showbase.ShowBaseGlobal import globalClock
 from direct.task.TaskManagerGlobal import taskMgr
-from panda3d.core import Vec3
+from panda3d.core import Vec3, ClockObject
 
 from common.collision.setup import setup_collisions
 
-from common.config import FRAMETIME
+from common.config import FRAMERATE
 from common.player.player_controller import PlayerController
 from common.state.game_config import GameConfig
 from common.state.game_state_diff import GameStateDiff
@@ -37,6 +38,7 @@ class Server(ShowBase):
         self.active_players: dict[Address, PlayerController] = {}
         self.next_id = 0
         self.map_size = 10
+        self.index = 0
         print("[INFO] Starting WFC map generation")
         self.tiles, self.player_positions = start_wfc(self.map_size, 1)
         self.__setup_collisions()
@@ -81,6 +83,10 @@ class Server(ShowBase):
         return task.cont
 
     def broadcast_global_state(self, task):
+        self.index += 1
+        if self.index % 2 != 0:
+            return task.cont
+
         game_state = GameStateDiff(TimeStep(begin=0, end=time.time()))
         player: PlayerController
         game_state.player_state \
@@ -122,6 +128,7 @@ class Server(ShowBase):
         model.reparent_to(self.render)
         new_player_controller = PlayerController(model, new_player_state)
         self.active_players[address] = new_player_controller
+        new_player_controller.sync_position()
 
         player_collider = new_player_controller.colliders[0]
         self.cTrav.addCollider(player_collider, self.pusher)
@@ -154,9 +161,10 @@ class Server(ShowBase):
 
 
 if __name__ == "__main__":
-    # server = Server('127.0.0.1', 7654, True)
+    # server = Server('127.0.0.1', 7654, True)  # this slows down the whole simulation, debug only
     server = Server('127.0.0.1', 7654)
-    server.set_sleep(FRAMETIME)
+    globalClock.setMode(ClockObject.MLimited)
+    globalClock.setFrameRate(FRAMERATE)
     server.listen()
     print(f"[INFO] Starting game loop")
     server.run()

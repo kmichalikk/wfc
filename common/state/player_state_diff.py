@@ -21,7 +21,7 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
             raise RuntimeError("invalid order of game states to diff")
 
         diff_state = PlayerStateDiff(TimeStep(self.step.end, other.step.end), self.id)
-        diff_state.motion_state = other.motion_state.diff(self.motion_state)
+        diff_state.motion_state = self.motion_state.diff(other.motion_state)
         diff_state.slot = other.slot
 
         return diff_state
@@ -56,3 +56,9 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
     @classmethod
     def empty(cls, player_id: str):
         return cls(TimeStep(begin=0, end=0), player_id)
+
+    def clone(self):
+        cloned = PlayerStateDiff(self.step, self.id)
+        cloned.slot = self.slot
+        cloned.motion_state = self.motion_state.clone()
+        return cloned

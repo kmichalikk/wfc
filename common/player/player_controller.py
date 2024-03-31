@@ -7,10 +7,16 @@ from common.typings import Input, TimeStep
 
 
 class PlayerController(CollisionObject):
-    def __init__(self, model: NodePath, player_state: PlayerStateDiff):
-        super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 0.5, 0.25)])
+    def __init__(self, model: NodePath, player_state: PlayerStateDiff, ghost=False):
+        if ghost:
+            # todo: refactor - ghost as separate class (without collision object, identical otherwise)
+            super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 5, 0.25)])
+        else:
+            super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 0.5, 0.25)])
 
         self.model = model
+        if ghost:
+            self.model.hide()
         self.state = player_state
 
     def get_id(self) -> str:
@@ -20,6 +26,7 @@ class PlayerController(CollisionObject):
         return self.state
 
     def replace_state(self, state: PlayerStateDiff):
+        state.motion_state.active_inputs = self.state.motion_state.active_inputs
         self.state = state
         self.colliders[0].set_pos(self.state.get_position())
 
@@ -29,6 +36,10 @@ class PlayerController(CollisionObject):
     def update_position(self):
         self.state.set_position(self.colliders[0].get_pos())
         self.state.update_motion()
+        self.sync_position()
+        self.update_time_step()
+
+    def sync_position(self):
         self.colliders[0].set_pos(self.state.get_position())
         self.model.set_pos(self.state.get_position())
         self.model.set_h(self.state.get_model_angle())
@@ -38,9 +49,6 @@ class PlayerController(CollisionObject):
         self.state.set_position(self.colliders[0].get_pos())
         self.state.update_motion()
         self.colliders[0].set_pos(self.state.get_position())
-        return self.task_sync_position(task)
-
-    def task_sync_position(self, task):
         self.model.set_pos(self.state.get_position())
         self.model.set_h(self.state.get_model_angle())
         return task.cont

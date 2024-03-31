@@ -1,5 +1,6 @@
 import time
 from collections import deque
+from queue import Queue
 
 import panda3d.core as p3d
 
@@ -21,78 +22,127 @@ class GameManager:
     def __init__(self):
         self.players: dict[str, PlayerController] = {}
         self.main_player: Union[None, PlayerController] = None
-        self.game_state: GameStateDiff = GameStateDiff(TimeStep(begin=0, end=time.time()))
-        self.game_state_history: deque[GameStateDiff] = deque()
-        self.game_state_history.append(self.game_state)
+        self.main_player_server_view: Union[None, PlayerController] = None
+        self.game_state_diffs: deque[GameStateDiff] = deque()
+        self.last_game_state: GameStateDiff = GameStateDiff(TimeStep(begin=0, end=time.time() - 0.2))
+        self.game_state: GameStateDiff = GameStateDiff(TimeStep(begin=0, end=time.time() - 0.1))
+        self.server_game_state_transfer_queue: Queue[NetworkTransfer] = Queue()
         self.sync_tasks: dict[str, Task] = {}
 
     def setup_player(self, game: ShowBase, player_state: PlayerStateDiff, main_player=False):
         node_path_factory = TileNodePathFactory(game.loader)
         player_node_path = node_path_factory.get_player_model()
-        player_node_path.set_pos(player_state.get_position())
         player_node_path.reparent_to(game.render)
-
         player = PlayerController(
             player_node_path,
             player_state
         )
+        player.sync_position()
+
         self.game_state.player_state[player_state.id] = player_state
         self.players[player_state.id] = player
 
         if main_player:
             game.attach_input()
             self.main_player = player
-            game.taskMgr.add(self.game_state_snapshot, "store game state history up to .5 sec")
+            game.taskMgr.add(self.sync_game_state, "update players positions", sort=1)
+            game.taskMgr.add(self.game_state_snapshot, "store game state history up to .5 sec", sort=2)
+            model = node_path_factory.get_player_model()
+            model.reparent_to(game.render)
+            self.main_player_server_view = PlayerController(
+                model,
+                player_state.clone(),
+                ghost=True
+            )
+            self.main_player_server_view.sync_position()
             player_collider = player.colliders[0]
             game.cTrav.addCollider(player_collider, game.pusher)
             game.pusher.addCollider(player_collider, player_collider)
-        else:
-            self.sync_tasks[player_state.id] = game.taskMgr.add(player.task_sync_position, "sync player position")
 
-    def sync_game_state(self, game_state_transfer: NetworkTransfer):
+    def sync_game_state(self, task):
+        game_state_transfer = None
+        while not self.server_game_state_transfer_queue.empty():
+            game_state_transfer = self.server_game_state_transfer_queue.get()
+
+        self.last_game_state = self.game_state.clone()
+        # self.update_positions()
+        if game_state_transfer is not None:
+            self.update_positions_and_reconciliate(game_state_transfer)
+        else:
+            self.update_positions()
+
+        return task.cont
+
+    def update_positions_and_reconciliate(self, transfer: NetworkTransfer):
         server_game_state = GameStateDiff.empty(self.game_state.player_state.keys())
-        server_game_state.restore(game_state_transfer)
-        # print("[DIFF] Server state at {} vs now {}".format(server_game_state.step.end, time.time()))
-        while len(self.game_state_history) > 0:
-            state = self.game_state_history.popleft()
+        server_game_state.restore(transfer)
+        # print("[DIFF] Server state at {} vs now {}, history len = {}".format(
+        #     server_game_state.step.end, time.time(), len(self.game_state_diffs)))
+        while len(self.game_state_diffs) > 0:
+            state = self.game_state_diffs.popleft()
             if state.step.end < server_game_state.step.end:
                 continue
             else:
                 # print("[DIFF] Discarded outdated diffs, {} left".format(
-                #     len(self.game_state_history)+1
+                #     len(self.game_state_diffs) + 1
                 # ))
                 server_game_state.apply(state)
-                while len(self.game_state_history) > 0:
-                    state = self.game_state_history.popleft()
+                while len(self.game_state_diffs) > 0:
+                    state = self.game_state_diffs.popleft()
                     server_game_state.apply(state)
                 break
         else:
             # print("[DIFF] Discarded outdated diffs, up to date".format(
             #     time.time() - server_game_state.step.end,
-            #     len(self.game_state_history)
+            #     len(self.game_state_diffs)
             # ))
             pass
-        previous_game_state = self.game_state
-        self.game_state = server_game_state
-        self.game_state_history.append(self.game_state)
-        self.main_player.update_position()
-        last_motion_state = previous_game_state \
-            .player_state[self.main_player.get_id()] \
-            .motion_state \
-            .diff(self.main_player.state.motion_state)
+        # previous_motion_state = self.main_player.state.motion_state.clone()
+        # self.game_state = server_game_state
+        # self.game_state_diffs.append(self.game_state.clone())
+        # self.main_player.update_position()
+        # last_motion_state = previous_motion_state.diff(self.main_player.state.motion_state)
         for player in self.players.values():
-            player.replace_state(self.game_state.player_state[player.get_id()])
-        correction = last_motion_state.cut_begin(self.game_state.step.end)
-        self.main_player.state.motion_state.apply(correction)
+            if player is not self.main_player:
+                player.replace_state(server_game_state.player_state[player.get_id()])
+                player.sync_position()
+            else:
+                self.main_player_server_view \
+                    .replace_state(server_game_state.player_state[player.get_id()])
+                self.main_player.update_position()
+                self.main_player_server_view.sync_position()
+                lerp = self.main_player.state.motion_state \
+                    .lerp(0.4, self.main_player_server_view.state.motion_state)
+                if lerp.position.length() > 0.001:
+                    self.main_player.state.motion_state.apply(lerp)
+        # correction = last_motion_state.cut_begin(server_game_state.step.end)
+        # self.main_player.state.motion_state.apply(correction)
+
+    def update_positions(self):
+        last_player_position = self.main_player.state.clone()
+        self.main_player.update_position()
+        diff = last_player_position.diff(self.main_player.state)
+        self.main_player_server_view.state.apply(diff)
+        self.main_player_server_view.sync_position()
+        lerp = self.main_player.state.motion_state \
+            .lerp(0.4, self.main_player_server_view.state.motion_state)
+
+        if lerp.position.length() > 0.001:
+            self.main_player.state.motion_state.apply(lerp)
+
+        for player in self.players.values():
+            player.sync_position()
 
     def game_state_snapshot(self, task):
-        self.game_state.step = TimeStep(begin=self.game_state.step.begin, end=time.time())
-        self.game_state_history.append(
-            self.game_state_history[-1].diff(self.game_state)
+        self.game_state_diffs.append(
+            self.last_game_state.diff(self.game_state)
         )
-        while self.game_state_history[0].step.begin + 0.5 < time.time():
-            self.game_state_history.popleft()
+        # while len(self.game_state_diffs) > 0 and self.game_state_diffs[0].step.end + 0.5 < time.time():
+        #     self.game_state_diffs.popleft()
         return task.cont
+
+    def queue_server_game_state(self, transfer: NetworkTransfer):
+        self.server_game_state_transfer_queue.put(transfer)
 
     def setup_map(self, game, tiles, map_size):
         game.disableMouse()

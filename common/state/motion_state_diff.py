@@ -14,7 +14,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.angle: float = 0
 
         self.active_inputs: Vec3 = Vec3(0, 0, 0)
-        self.acceleration_rate = 0.5
+        self.acceleration_rate = 0.8
         self.damping = 0.01
 
     def apply(self, other: 'MotionStateDiff'):
@@ -26,7 +26,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
     def diff(self, other: 'MotionStateDiff') -> 'MotionStateDiff':
         if other.step.end < self.step.end:
-            raise RuntimeError("invalid order of game states to diff")
+            print("invalid order of game states to diff")
 
         diff_state = MotionStateDiff(
             TimeStep(self.step.end, other.step.end),
@@ -38,6 +38,18 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         diff_state.angle = other.angle - self.angle
 
         return diff_state
+
+    def lerp(self, t: float, other: 'MotionStateDiff') -> 'MotionStateDiff':
+        lerp_state = MotionStateDiff(
+            self.step,
+            (other.position - self.position) * t,
+            0,
+            0,
+            self.player_id
+        )
+        lerp_state.angle = (other.angle - self.angle) * t
+
+        return lerp_state
 
     def transfer(self, builder: SupportsBuildingNetworkTransfer):
         builder.add(
@@ -78,9 +90,9 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         if new_begin < self.step.begin:
             return self
 
+        span = self.step.end - self.step.begin
         # new/old ratio
-        t = (self.step.end - new_begin) / (self.step.end - self.step.begin)
-        print(t)
+        t = (self.step.end - new_begin) / span if span > 0.001 else 0
         return MotionStateDiff(
             TimeStep(
                 begin=new_begin,
@@ -115,3 +127,14 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
             Vec3(0, 0, 0),
             player_id
         )
+
+    def clone(self):
+        cloned = MotionStateDiff(
+            self.step,
+            Vec3(self.position),
+            Vec3(self.velocity),
+            Vec3(self.acceleration),
+            self.player_id
+        )
+        cloned.angle = self.angle
+        return cloned
