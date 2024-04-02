@@ -1,8 +1,8 @@
 from queue import Queue
 from panda3d.core import Vec3
-from src.tiles.tiles_manager import TilesManager
-from src.wfc.wfc_generator import WFCGridGenerator
-from src.wfc.wfc_grid import WFCGrid
+from common.tiles.tiles_manager import TilesManager
+from server.wfc.wfc_generator import WFCGridGenerator
+from server.wfc.wfc_grid import WFCGrid
 
 
 class WFCMap:

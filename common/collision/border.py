@@ -1,5 +1,5 @@
 from panda3d.core import CollisionTube
-from collision_object import CollisionObject
+from common.collision.collision_object import CollisionObject
 
 
 class Border(CollisionObject):

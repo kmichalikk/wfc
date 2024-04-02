@@ -1,5 +1,5 @@
-from src.wfc.wfc_cell import WFCCell
-from src.typings import Direction
+from server.wfc.wfc_cell import WFCCell
+from common.typings import Direction
 
 
 class WFCGrid:

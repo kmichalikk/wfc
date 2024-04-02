@@ -6,4 +6,4 @@ class TileNodePathFactory:
         self.loader = loader
 
     def get_player_model(self):
-        return self.loader.load_model("assets/models/player.glb")
+        return self.loader.load_model("../common/assets/models/player.glb")

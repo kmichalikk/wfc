@@ -4,7 +4,7 @@ from panda3d.core import CollisionBox, Point3, CollisionSphere, CollisionCapsule
 
 def create_new_tile(loader: p3d.Loader, name: str, position: tuple, heading: int):
     node_path = loader.load_model(
-        "assets/models/{}".format(name if name[-3:] == "glb" else (name + ".glb"))
+        "../common/assets/models/{}".format(name if name[-3:] == "glb" else (name + ".glb"))
     )
     node_path.set_pos(*position)
     node_path.set_h(heading)
