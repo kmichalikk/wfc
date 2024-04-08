@@ -39,7 +39,7 @@ class Server(ShowBase):
         self.next_player_id = 0
         self.frames_processed = 0
         print("[INFO] Starting WFC map generation")
-        self.tiles, self.player_positions = start_wfc(MAP_SIZE, 1)
+        self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
@@ -67,6 +67,7 @@ class Server(ShowBase):
 
     def __find_room_for(self, address):
         new_player_controller = self.__add_new_player(address, str(self.next_player_id))
+        self.__observe_collisions(new_player_controller)
         self.network_transfer_builder.add("id", str(self.next_player_id))
         self.next_player_id += 1
         self.network_transfer_builder.set_destination(address)
@@ -132,7 +133,7 @@ class Server(ShowBase):
 
     def __add_new_player(self, address: Address, id: str) -> PlayerController:
         new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id)
-        new_player_state.set_position(self.player_positions[0])
+        new_player_state.set_position((self.player_positions[int(new_player_state.id)]))
         model = self.node_path_factory.get_player_model()
         model.reparent_to(self.render)
         new_player_controller = PlayerController(model, new_player_state)
@@ -151,6 +152,15 @@ class Server(ShowBase):
 
     def __setup_collisions(self):
         setup_collisions(self, self.tiles, MAP_SIZE)
+
+    def __observe_collisions(self, player):
+        self.accept('player' + player.get_id() + '-into-water', player.into_water)
+        self.accept('player' + player.get_id() + '-into-grass', player.out_of_water)
+        self.accept('player' + player.get_id() + '-into-safe_space0', player.into_safe_space)
+        self.accept('player' + player.get_id() + '-into-safe_space1', player.into_safe_space)
+        self.accept('player' + player.get_id() + '-into-safe_space2', player.into_safe_space)
+        self.accept('player' + player.get_id() + '-into-safe_space3', player.into_safe_space)
+        self.accept('player' + player.get_id() + '-into-flag', player.flag_pickup, [self.flag])
 
     # to be called after __setup_collisions()
     def __setup_view(self):
@@ -171,8 +181,8 @@ class Server(ShowBase):
 
 
 if __name__ == "__main__":
-    # server = Server('127.0.0.1', SERVER_PORT, True)  # this slows down the whole simulation, debug only
-    server = Server('127.0.0.1', SERVER_PORT)
+    server = Server('127.0.0.1', SERVER_PORT, True)  # this slows down the whole simulation, debug only
+    # server = Server('127.0.0.1', SERVER_PORT)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()
