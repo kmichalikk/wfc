@@ -153,6 +153,7 @@ class Server(ShowBase):
 
     def __find_room_for(self, address):
         new_player_controller = self.__add_new_player(address, str(self.next_player_id))
+        self.__observe_collisions(new_player_controller)
         self.network_transfer_builder.add("id", str(self.next_player_id))
         self.next_player_id += 1
         self.network_transfer_builder.set_destination(address)
@@ -247,6 +248,15 @@ class Server(ShowBase):
 
     def __setup_collisions(self):
         setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
+
+    def __observe_collisions(self, player):
+        self.accept('player' + player.get_id() + '-into-water', player.into_water)
+        self.accept('player' + player.get_id() + '-into-grass', player.out_of_water)
+        self.accept('player' + player.get_id() + '-into-safe_space0', player.into_safe_space)
+        self.accept('player' + player.get_id() + '-into-safe_space1', player.into_safe_space)
+        self.accept('player' + player.get_id() + '-into-safe_space2', player.into_safe_space)
+        self.accept('player' + player.get_id() + '-into-safe_space3', player.into_safe_space)
+        self.accept('player' + player.get_id() + '-into-flag', player.flag_pickup, [self.flag])
 
     # to be called after __setup_collisions()
     def __setup_view(self):

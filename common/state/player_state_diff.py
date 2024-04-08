@@ -9,6 +9,7 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.step = step
         self.motion_state: MotionStateDiff = MotionStateDiff.empty(id)
         self.slot: Item = "empty"
+        self.has_flag = False
         self.id: str = id
 
     def apply(self, other: 'PlayerStateDiff'):
