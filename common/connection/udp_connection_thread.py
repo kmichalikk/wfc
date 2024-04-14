@@ -9,7 +9,7 @@ from common.transfer.network_transfer_builder import NetworkTransferBuilder
 
 class UDPConnectionThread(Thread):
     """ Thread class comes from panda3d - beware incompatibilities! """
-    def __init__(self, addr, port):
+    def __init__(self, addr, port, server=False):
         super().__init__()
         self.addr = addr
         self.port = port
@@ -28,7 +28,8 @@ class UDPConnectionThread(Thread):
 
         # set up IP sockets
         self.udp_socket = socket(AF_INET, SOCK_DGRAM)
-        self.udp_socket.bind((self.addr, self.port))
+        if server:
+            self.udp_socket.bind((self.addr, self.port))
         self.network_transfer_builder = NetworkTransferBuilder()
 
     def get_queued_transfers(self):

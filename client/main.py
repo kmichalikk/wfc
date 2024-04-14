@@ -7,7 +7,7 @@ from panda3d.core import ClockObject, PStatClient, load_prc_file_data
 from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
 
-from common.config import FRAMERATE
+from common.config import FRAMERATE, SERVER_ADDRESS, SERVER_PORT
 from common.state.game_config import GameConfig
 from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_node_path_factory import TileNodePathFactory
@@ -30,7 +30,7 @@ class Game(ShowBase):
         simplepbr.init()
 
         # initialize ConnectionManager and subscribe to all event it handles
-        self.connection_manager = ConnectionManager(('127.0.0.1', 7654))
+        self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT))
         self.connection_manager.wait_for_connection(self.ready_handler)
         self.connection_manager.subscribe_for_new_player(self.new_player_handler)
 
@@ -79,5 +79,5 @@ if __name__ == "__main__":
     game = Game()
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
-    PStatClient.connect()
+    # PStatClient.connect()
     game.run()

@@ -24,7 +24,7 @@ sys.path.append("../common")
 
 
 class Server(ShowBase):
-    def __init__(self, address, port, view=False):
+    def __init__(self, port, view=False):
         if view:
             # show window for debug processes, slows down everything
             super().__init__()
@@ -32,7 +32,7 @@ class Server(ShowBase):
             super().__init__(windowType="none")
         self.view = view
         self.port = port
-        self.udp_connection = UDPConnectionThread(address, port)
+        self.udp_connection = UDPConnectionThread('0.0.0.0', port, server=True)
         self.node_path_factory = TileNodePathFactory(self.loader)
         self.network_transfer_builder = NetworkTransferBuilder()
         self.active_players: dict[Address, PlayerController] = {}
@@ -171,8 +171,8 @@ class Server(ShowBase):
 
 
 if __name__ == "__main__":
-    # server = Server('127.0.0.1', SERVER_PORT, True)  # this slows down the whole simulation, debug only
-    server = Server('127.0.0.1', SERVER_PORT)
+    # server = Server(SERVER_PORT, True)  # this slows down the whole simulation, debug only
+    server = Server(SERVER_PORT)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()
