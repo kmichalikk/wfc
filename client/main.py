@@ -65,6 +65,10 @@ class Game(ShowBase):
         self.accept("d-up", lambda: self.handle_input("-right"))
         self.accept("a", lambda: self.handle_input("+left"))
         self.accept("a-up", lambda: self.handle_input("-left"))
+        self.accept("space-up", lambda: self.handle_bullet())
+
+    def handle_bullet(self):
+        self.game_manager.shoot_bullet()
 
     def handle_input(self, input: Input):
         self.game_manager.main_player.update_input(input)

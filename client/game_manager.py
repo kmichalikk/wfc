@@ -10,6 +10,7 @@ from direct.task import Task
 
 from common.collision.setup import setup_collisions
 from common.config import TIME_STEP
+from common.objects.bullet import Bullet
 from common.state.game_state_diff import GameStateDiff
 from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_controller import create_new_tile
@@ -47,6 +48,8 @@ class GameManager:
         # it allows for interpolation between previous server states
         # should be kept relatively low (i.e. 100ms) to not be noticeable
         self.other_players_delay = 2 * TIME_STEP
+
+        self.bullets: list[Bullet] = []
 
         self.game = game
         self.node_path_factory = node_path_factory
@@ -99,7 +102,23 @@ class GameManager:
         else:
             self.update_main_player_position()
         self.interpolate_other_players_positions()
+        self.update_bullets()
         return task.cont
+
+    def update_bullets(self):
+        for bullet in self.bullets:
+            bullet.update_position()
+
+    def shoot_bullet(self):
+        self.bullets.append(
+            Bullet(
+                self.game.render,
+                (self.main_player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
+                    + self.main_player.get_state().get_direction() * 0.5),
+                self.main_player.get_state().get_direction(),
+                self.main_player.get_id()
+            )
+        )
 
     def apply_local_diffs(self, server_game_state: GameStateDiff):
         """
