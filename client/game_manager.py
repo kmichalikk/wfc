@@ -11,6 +11,7 @@ from direct.task import Task
 from common.collision.setup import setup_collisions
 from common.config import TIME_STEP
 from common.objects.bullet import Bullet
+from common.objects.bullet_factory import BulletFactory
 from common.state.game_state_diff import GameStateDiff
 from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_controller import create_new_tile
@@ -49,6 +50,7 @@ class GameManager:
         # should be kept relatively low (i.e. 100ms) to not be noticeable
         self.other_players_delay = 2 * TIME_STEP
 
+        self.bullet_factory = BulletFactory(game.render)
         self.bullets: list[Bullet] = []
 
         self.game = game
@@ -73,11 +75,12 @@ class GameManager:
         self.main_player = player
         self.game.taskMgr.add(self.sync_game_state, "sync game state", sort=1)
         self.game.taskMgr.add(self.game_state_snapshot, "store game state diffs", sort=2)
+        self.game.accept("bullet-into-wall", self.handle_bullet_wall_hit)
 
         # add collider to main player controller
-        # player_collider = player.colliders[0]
-        # self.game.cTrav.addCollider(player_collider, self.game.pusher)
-        # self.game.pusher.addCollider(player_collider, player_collider)
+        player_collider = player.colliders[0]
+        self.game.cTrav.addCollider(player_collider, self.game.pusher)
+        self.game.pusher.addCollider(player_collider, player_collider)
 
         # add another controller for the player that doesn't directly respond to input
         # but is set to server state as it arrives i.e. every 3 frames and updated afterward
@@ -110,15 +113,19 @@ class GameManager:
             bullet.update_position()
 
     def shoot_bullet(self):
-        self.bullets.append(
-            Bullet(
-                self.game.render,
-                (self.main_player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
-                    + self.main_player.get_state().get_direction() * 0.5),
-                self.main_player.get_state().get_direction(),
-                self.main_player.get_id()
-            )
+        bullet = self.bullet_factory.get_one(
+            (self.main_player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
+             + self.main_player.get_state().get_direction() * 0.5),
+            self.main_player.get_state().get_direction(),
+            self.main_player.get_id()
         )
+        self.bullets.append(bullet)
+
+    def handle_bullet_wall_hit(self, entry):
+        if "wall" in entry.get_into_node_path().get_name():
+            bullet_id = entry.get_from_node_path().get_tag('id')
+            print("wall hit", bullet_id)
+            self.bullet_factory.destroy(int(bullet_id))
 
     def apply_local_diffs(self, server_game_state: GameStateDiff):
         """
@@ -245,7 +252,7 @@ class GameManager:
         point_light_node.set_pos(0, -10, 10)
         game.render.set_light(point_light_node)
 
-        setup_collisions(game, tiles, map_size)
+        setup_collisions(game, tiles, map_size, self.bullet_factory)
 
         def update_camera(task):
             if self.main_player is None:

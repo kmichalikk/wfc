@@ -6,10 +6,12 @@ from common.collision.collision_object import CollisionObject
 from common.tiles.tile_controller import create_new_tile, collision_shapes
 
 
-def setup_collisions(game, tiles, map_size):
+def setup_collisions(game, tiles, map_size, bullet_factory):
     game.cTrav = p3d.CollisionTraverser()
     game.pusher = p3d.CollisionHandlerPusher()
     game.pusher.setHorizontal(True)
+    game.collision_event_generator = p3d.CollisionHandlerEvent()
+    game.collision_event_generator.add_in_pattern('%fn-into-%in')
 
     game.border = Border(game.render, map_size)
     game.tile_colliders = []

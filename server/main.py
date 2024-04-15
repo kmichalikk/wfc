@@ -10,6 +10,8 @@ from panda3d.core import Vec3, ClockObject
 
 from common.collision.setup import setup_collisions
 from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
+from common.objects.bullet import Bullet
+from common.objects.bullet_factory import BulletFactory
 from common.player.player_controller import PlayerController
 from common.state.game_config import GameConfig
 from common.state.game_state_diff import GameStateDiff
@@ -39,7 +41,9 @@ class Server(ShowBase):
         self.next_player_id = 0
         self.frames_processed = 0
         print("[INFO] Starting WFC map generation")
-        self.tiles, self.player_positions = start_wfc(MAP_SIZE, 1)
+        self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
+        self.bullet_factory = BulletFactory(self.render)
+        self.bullets: list[Bullet] = []
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
@@ -132,7 +136,7 @@ class Server(ShowBase):
 
     def __add_new_player(self, address: Address, id: str) -> PlayerController:
         new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id)
-        new_player_state.set_position(self.player_positions[0])
+        new_player_state.set_position((self.player_positions[int(new_player_state.id)]))
         model = self.node_path_factory.get_player_model()
         model.reparent_to(self.render)
         new_player_controller = PlayerController(model, new_player_state)
@@ -150,7 +154,7 @@ class Server(ShowBase):
         return new_player_controller
 
     def __setup_collisions(self):
-        setup_collisions(self, self.tiles, MAP_SIZE)
+        setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
 
     # to be called after __setup_collisions()
     def __setup_view(self):

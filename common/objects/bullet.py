@@ -5,12 +5,13 @@ import panda3d.core as p3d
 
 
 class Bullet(CollisionObject):
-    def __init__(self, parent: p3d.NodePath, position: p3d.Vec3, direction: p3d.Vec3, owner_id: str):
+    def __init__(self, parent: p3d.NodePath, position: p3d.Vec3, direction: p3d.Vec3, owner_id: str, bullet_id: int):
         super().__init__(parent, 'bullet', [p3d.CollisionSphere(0, 0, 0, 0.1)])
         self.colliders[0].set_pos(position)
         self.colliders[0].show()
-        print(self.colliders[0].get_pos())
+        self.colliders[0].set_tag('id', str(bullet_id))
         self.owner_id: str = owner_id
+        self.bullet_id: int = bullet_id
         self.position = position
         self.direction = direction.normalized()
         self.velocity = 10
