@@ -112,19 +112,21 @@ class GameManager:
         for bullet in self.bullets:
             bullet.update_position()
 
-    def shoot_bullet(self):
+    def shoot_bullet(self) -> p3d.Vec3:
+        direction = self.main_player.get_state().get_direction()
         bullet = self.bullet_factory.get_one(
             (self.main_player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
-             + self.main_player.get_state().get_direction() * 0.5),
-            self.main_player.get_state().get_direction(),
+             + direction * 0.5),
+            direction,
             self.main_player.get_id()
         )
         self.bullets.append(bullet)
+        return direction
 
     def handle_bullet_wall_hit(self, entry):
         if "wall" in entry.get_into_node_path().get_name():
             bullet_id = entry.get_from_node_path().get_tag('id')
-            print("wall hit", bullet_id)
+            self.bullets = [b for b in self.bullets if b.bullet_id != bullet_id]
             self.bullet_factory.destroy(int(bullet_id))
 
     def apply_local_diffs(self, server_game_state: GameStateDiff):

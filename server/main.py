@@ -53,6 +53,8 @@ class Server(ShowBase):
         self.udp_connection.start()
         taskMgr.add(self.handle_clients, "handle client messages")
         taskMgr.add(self.broadcast_global_state, "broadcast global state")
+        taskMgr.add(self.update_bullets, "update bullets")
+        self.accept("bullet-into-wall", self.handle_bullet_hit)
         print(f"[INFO] Listening on port {self.port}")
 
     def handle_clients(self, task):
@@ -67,7 +69,36 @@ class Server(ShowBase):
                 print("[INFO] Update input")
                 if transfer.get_source() in self.active_players:
                     self.active_players[transfer.get_source()].update_input(transfer.get("input"))
+            elif type == Messages.FIRE_GUN:
+                player = self.active_players[transfer.get_source()]
+                print("[INFO] Gun fired by player", player.get_id())
+                self.shoot_bullet(
+                    p3d.Vec3(float(transfer.get('x')), float(transfer.get('y')), 0),
+                    player
+                )
         return task.cont
+
+    def update_bullets(self, task):
+        for bullet in self.bullets:
+            bullet.update_position()
+        return task.cont
+
+    def shoot_bullet(self, direction, player) -> p3d.Vec3:
+        bullet = self.bullet_factory.get_one(
+            (player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
+             + direction * 0.5),
+            direction,
+            player.get_id()
+        )
+        self.bullets.append(bullet)
+
+    def handle_bullet_hit(self, entry):
+        if "wall" in entry.get_into_node_path().get_name():
+            bullet_id = entry.get_from_node_path().get_tag('id')
+            self.bullets = [b for b in self.bullets if b.bullet_id != bullet_id]
+            self.bullet_factory.destroy(int(bullet_id))
+        else:
+            print("shot player" + entry.get_into_node_path().get_tag('id'))
 
     def __find_room_for(self, address):
         new_player_controller = self.__add_new_player(address, str(self.next_player_id))
@@ -150,6 +181,7 @@ class Server(ShowBase):
             player_collider.show()
 
         taskMgr.add(new_player_controller.task_update_position, "update player position")
+        self.accept(f"bullet-into-player{id}", self.handle_bullet_hit)
 
         return new_player_controller
 

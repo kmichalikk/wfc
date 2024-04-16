@@ -68,7 +68,9 @@ class Game(ShowBase):
         self.accept("space-up", lambda: self.handle_bullet())
 
     def handle_bullet(self):
-        self.game_manager.shoot_bullet()
+        direction = self.game_manager.shoot_bullet()
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_gun_trigger(direction),
+                                     "send input on next frame")
 
     def handle_input(self, input: Input):
         self.game_manager.main_player.update_input(input)
