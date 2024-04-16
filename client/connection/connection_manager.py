@@ -57,8 +57,9 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
-    def send_gun_trigger(self, direction: p3d.Vec3):
+    def send_gun_trigger(self, direction: p3d.Vec3, timestamp: int):
         self.network_transfer_builder.add("type", Messages.FIRE_GUN)
+        self.network_transfer_builder.add("timestamp", timestamp)
         self.network_transfer_builder.add("x", direction.get_x())
         self.network_transfer_builder.add("y", direction.get_y())
         self.network_transfer_builder.set_destination(self.server_address)

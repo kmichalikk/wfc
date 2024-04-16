@@ -1,5 +1,7 @@
 import sys
 import time
+from collections import deque
+
 import panda3d.core as p3d
 import simplepbr
 
@@ -28,7 +30,7 @@ sys.path.append("../common")
 class Server(ShowBase):
     def __init__(self, port, view=False):
         if view:
-            # show window for debug processes, slows down everything
+            # show window for debug purposes, slows down everything
             super().__init__()
         else:
             super().__init__(windowType="none")
@@ -38,11 +40,14 @@ class Server(ShowBase):
         self.node_path_factory = TileNodePathFactory(self.loader)
         self.network_transfer_builder = NetworkTransferBuilder()
         self.active_players: dict[Address, PlayerController] = {}
+        self.game_state_history: deque[GameStateDiff] = deque()
+        self.last_game_state_timestamp = 0
         self.next_player_id = 0
         self.frames_processed = 0
         print("[INFO] Starting WFC map generation")
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.bullet_factory = BulletFactory(self.render)
+        self.projectiles_to_process: list[Bullet] = []
         self.bullets: list[Bullet] = []
         self.__setup_collisions()
         print("[INFO] Map generated")
@@ -52,7 +57,7 @@ class Server(ShowBase):
     def listen(self):
         self.udp_connection.start()
         taskMgr.add(self.handle_clients, "handle client messages")
-        taskMgr.add(self.broadcast_global_state, "broadcast global state")
+        taskMgr.add(self.handle_game_state, "broadcast global state")
         taskMgr.add(self.update_bullets, "update bullets")
         self.accept("bullet-into-wall", self.handle_bullet_hit)
         print(f"[INFO] Listening on port {self.port}")
@@ -71,26 +76,32 @@ class Server(ShowBase):
                     self.active_players[transfer.get_source()].update_input(transfer.get("input"))
             elif type == Messages.FIRE_GUN:
                 player = self.active_players[transfer.get_source()]
-                print("[INFO] Gun fired by player", player.get_id())
+                trigger_timestamp = transfer.get("timestamp")
                 self.shoot_bullet(
                     p3d.Vec3(float(transfer.get('x')), float(transfer.get('y')), 0),
-                    player
+                    player,
+                    trigger_timestamp
                 )
         return task.cont
 
     def update_bullets(self, task):
         for bullet in self.bullets:
             bullet.update_position()
+        projectiles = self.projectiles_to_process
+        self.projectiles_to_process = []
+        for b in projectiles:
+            self.bullets.append(b)
         return task.cont
 
-    def shoot_bullet(self, direction, player) -> p3d.Vec3:
+    def shoot_bullet(self, direction, player, timestamp) -> p3d.Vec3:
         bullet = self.bullet_factory.get_one(
             (player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
              + direction * 0.5),
             direction,
             player.get_id()
         )
-        self.bullets.append(bullet)
+        bullet.timestamp = timestamp
+        self.projectiles_to_process.append(bullet)
 
     def handle_bullet_hit(self, entry):
         if "wall" in entry.get_into_node_path().get_name():
@@ -121,16 +132,27 @@ class Server(ShowBase):
             new_player_controller.get_state()
         )
 
-    def broadcast_global_state(self, task):
-        self.frames_processed += 1
-        if self.frames_processed % INV_TICK_RATE != 0:  # i.e. 60fps / 3 = tick rate 20
-            return task.cont
-
+    def handle_game_state(self, task):
         # prepare current snapshot of game state
         game_state = GameStateDiff(TimeStep(begin=0, end=time.time()))
         game_state.player_state \
             = {player.get_id(): player.get_state() for player in self.active_players.values()}
 
+        # broadcast states "tick rate" times per second
+        self.frames_processed += 1
+        if self.frames_processed % INV_TICK_RATE == 0:  # i.e. 60fps / 3 = tick rate 20
+            self.__broadcast_game_state(game_state)
+
+        # save the snapshot to history
+        game_state.step = TimeStep(begin=self.last_game_state_timestamp, end=game_state.step.end)
+        self.game_state_history.append(game_state)
+        while len(self.game_state_history) > 0 \
+                and self.game_state_history[0].step.end < time.time() - 0.5:
+            self.game_state_history.popleft()
+
+        return task.cont
+
+    def __broadcast_game_state(self, game_state):
         self.network_transfer_builder.add("type", Messages.GLOBAL_STATE)
         game_state.transfer(self.network_transfer_builder)
         address: Address
@@ -142,8 +164,6 @@ class Server(ShowBase):
             )
         # reset=False left previous builder state, clean it up after pinging every player
         self.network_transfer_builder.cleanup()
-
-        return task.cont
 
     def broadcast_player_disconnected(self, task):
         # todo: client is active as long as it sends KEEP_ALIVE from time to time

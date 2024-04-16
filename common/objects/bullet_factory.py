@@ -1,3 +1,4 @@
+import time
 import panda3d.core as p3d
 
 from common.objects.bullet import Bullet
@@ -13,7 +14,7 @@ class BulletFactory:
     def __init__(self, render):
         self.bullets = []
         for i in range(self.COUNT):
-            bullet = Bullet(render, p3d.Vec3(-10, i, 0), p3d.Vec3.zero(), "", i)
+            bullet = Bullet(render, p3d.Vec3(-10, i, 0), p3d.Vec3.zero(), "", i, int(time.time()*1000))
             self.bullets.append(bullet)
 
         self.id = 0
