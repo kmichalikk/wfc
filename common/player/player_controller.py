@@ -7,12 +7,16 @@ from common.typings import Input, TimeStep
 
 
 class PlayerController(CollisionObject):
+    COLLISION_RADIUS = 0.25
+
     def __init__(self, model: p3d.NodePath, player_state: PlayerStateDiff, ghost=False):
         if ghost:
             # todo: refactor - ghost as separate class (without collision object, identical otherwise)
-            super().__init__(parent=model.parent, name="player"+player_state.id, shapes=[p3d.CollisionSphere(0, 0, 5, 0.25)])
+            super().__init__(parent=model.parent, name="player" + player_state.id,
+                             shapes=[p3d.CollisionSphere(0, 0, 5, self.COLLISION_RADIUS)])
         else:
-            super().__init__(parent=model.parent, name="player"+player_state.id, shapes=[p3d.CollisionSphere(0, 0, 0.5, 0.25)])
+            super().__init__(parent=model.parent, name="player" + player_state.id,
+                             shapes=[p3d.CollisionSphere(0, 0, 0.5, self.COLLISION_RADIUS)])
 
         self.model = model
         self.colliders[0].set_tag('id', player_state.id)

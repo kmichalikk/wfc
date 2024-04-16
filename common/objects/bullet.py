@@ -20,6 +20,9 @@ class Bullet(CollisionObject):
 
     def update_position(self):
         dt = globalClock.get_dt()
+        self.update_position_by_dt(dt)
+
+    def update_position_by_dt(self, dt):
         self.position.set_x(self.position.get_x() + self.direction.get_x() * self.velocity * dt)
         self.position.set_y(self.position.get_y() + self.direction.get_y() * self.velocity * dt)
         self.colliders[0].set_pos(self.position)

@@ -4,6 +4,7 @@ from collections import deque
 
 import panda3d.core as p3d
 import simplepbr
+from direct.showbase.MessengerGlobal import messenger
 
 from direct.showbase.ShowBase import ShowBase
 from direct.showbase.ShowBaseGlobal import globalClock
@@ -60,6 +61,7 @@ class Server(ShowBase):
         taskMgr.add(self.handle_game_state, "broadcast global state")
         taskMgr.add(self.update_bullets, "update bullets")
         self.accept("bullet-into-wall", self.handle_bullet_hit)
+        self.accept("player-damage", self.handle_player_damage)
         print(f"[INFO] Listening on port {self.port}")
 
     def handle_clients(self, task):
@@ -90,6 +92,7 @@ class Server(ShowBase):
         projectiles = self.projectiles_to_process
         self.projectiles_to_process = []
         for b in projectiles:
+            self.__update_position_compensate_time(b)
             self.bullets.append(b)
         return task.cont
 
@@ -109,7 +112,44 @@ class Server(ShowBase):
             self.bullets = [b for b in self.bullets if b.bullet_id != bullet_id]
             self.bullet_factory.destroy(int(bullet_id))
         else:
-            print("shot player" + entry.get_into_node_path().get_tag('id'))
+            messenger.send("player-damage", [entry.get_into_node_path().get_tag('id')])
+
+    def handle_player_damage(self, data):
+        player_id = data[0]
+        # todo: do sth when player has been hit, only first time that event fired
+        print("player {} was hit".format(player_id))
+
+    def __update_position_compensate_time(self, projectile: Bullet):
+        timestamp_sec = projectile.timestamp / 1000
+        last_history_index = len(self.game_state_history) - 1  # should NOT be empty
+        i = last_history_index
+        while i > 0 and self.game_state_history[i].step.begin > timestamp_sec:
+            i -= 1
+        players_to_skip = [projectile.owner_id]
+
+        def check_hit(states, projectile_position):
+            nonlocal players_to_skip
+            state: PlayerStateDiff
+            for state in states:
+                if state.id in players_to_skip:
+                    continue
+                length = (state.get_position() - projectile_position + p3d.Vec3(0, 0, 0.5)).length()
+                if length < PlayerController.COLLISION_RADIUS:
+                    players_to_skip.append(state.id)
+                    messenger.send("player-damage", [state.id])
+                    print("compensated for player {} hit".format(state.id))
+
+        check_hit(self.game_state_history[i].player_state.values(), projectile.position)
+
+        samples = 5
+        while i <= last_history_index:
+            dt = (self.game_state_history[i].step.end - timestamp_sec) / samples
+            for _ in range(samples):  # for more precision in finding hits
+                projectile.update_position_by_dt(dt)
+                check_hit(self.game_state_history[i].player_state.values(), projectile.position)
+            timestamp_sec = self.game_state_history[i].step.end
+            i += 1
+        pass
 
     def __find_room_for(self, address):
         new_player_controller = self.__add_new_player(address, str(self.next_player_id))
