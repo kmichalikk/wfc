@@ -1,7 +1,10 @@
 import sys
 import time
+from collections import deque
+
 import panda3d.core as p3d
 import simplepbr
+from direct.showbase.MessengerGlobal import messenger
 
 from direct.showbase.ShowBase import ShowBase
 from direct.showbase.ShowBaseGlobal import globalClock
@@ -10,6 +13,8 @@ from panda3d.core import Vec3, ClockObject
 
 from common.collision.setup import setup_collisions
 from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
+from common.objects.bullet import Bullet
+from common.objects.bullet_factory import BulletFactory
 from common.player.player_controller import PlayerController
 from common.state.game_config import GameConfig
 from common.state.game_state_diff import GameStateDiff
@@ -26,7 +31,7 @@ sys.path.append("../common")
 class Server(ShowBase):
     def __init__(self, port, view=False):
         if view:
-            # show window for debug processes, slows down everything
+            # show window for debug purposes, slows down everything
             super().__init__()
         else:
             super().__init__(windowType="none")
@@ -36,10 +41,15 @@ class Server(ShowBase):
         self.node_path_factory = TileNodePathFactory(self.loader)
         self.network_transfer_builder = NetworkTransferBuilder()
         self.active_players: dict[Address, PlayerController] = {}
+        self.game_state_history: deque[GameStateDiff] = deque()
+        self.last_game_state_timestamp = 0
         self.next_player_id = 0
         self.frames_processed = 0
         print("[INFO] Starting WFC map generation")
-        self.tiles, self.player_positions = start_wfc(MAP_SIZE, 1)
+        self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
+        self.bullet_factory = BulletFactory(self.render)
+        self.projectiles_to_process: list[Bullet] = []
+        self.bullets: list[Bullet] = []
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
@@ -48,7 +58,10 @@ class Server(ShowBase):
     def listen(self):
         self.udp_connection.start()
         taskMgr.add(self.handle_clients, "handle client messages")
-        taskMgr.add(self.broadcast_global_state, "broadcast global state")
+        taskMgr.add(self.handle_game_state, "broadcast global state")
+        taskMgr.add(self.update_bullets, "update bullets")
+        self.accept("bullet-into-wall", self.handle_bullet_hit)
+        self.accept("player-damage", self.handle_player_damage)
         print(f"[INFO] Listening on port {self.port}")
 
     def handle_clients(self, task):
@@ -63,7 +76,80 @@ class Server(ShowBase):
                 print("[INFO] Update input")
                 if transfer.get_source() in self.active_players:
                     self.active_players[transfer.get_source()].update_input(transfer.get("input"))
+            elif type == Messages.FIRE_GUN:
+                player = self.active_players[transfer.get_source()]
+                trigger_timestamp = transfer.get("timestamp")
+                self.shoot_bullet(
+                    p3d.Vec3(float(transfer.get('x')), float(transfer.get('y')), 0),
+                    player,
+                    trigger_timestamp
+                )
         return task.cont
+
+    def update_bullets(self, task):
+        for bullet in self.bullets:
+            bullet.update_position()
+        projectiles = self.projectiles_to_process
+        self.projectiles_to_process = []
+        for b in projectiles:
+            self.__update_position_compensate_time(b)
+            self.bullets.append(b)
+        return task.cont
+
+    def shoot_bullet(self, direction, player, timestamp) -> p3d.Vec3:
+        bullet = self.bullet_factory.get_one(
+            (player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
+             + direction * 0.5),
+            direction,
+            player.get_id()
+        )
+        bullet.timestamp = timestamp
+        self.projectiles_to_process.append(bullet)
+
+    def handle_bullet_hit(self, entry):
+        if "wall" in entry.get_into_node_path().get_name():
+            bullet_id = entry.get_from_node_path().get_tag('id')
+            self.bullets = [b for b in self.bullets if b.bullet_id != bullet_id]
+            self.bullet_factory.destroy(int(bullet_id))
+        else:
+            messenger.send("player-damage", [entry.get_into_node_path().get_tag('id')])
+
+    def handle_player_damage(self, data):
+        player_id = data[0]
+        # todo: do sth when player has been hit, only first time that event fired
+        print("player {} was hit".format(player_id))
+
+    def __update_position_compensate_time(self, projectile: Bullet):
+        timestamp_sec = projectile.timestamp / 1000
+        last_history_index = len(self.game_state_history) - 1  # should NOT be empty
+        i = last_history_index
+        while i > 0 and self.game_state_history[i].step.begin > timestamp_sec:
+            i -= 1
+        players_to_skip = [projectile.owner_id]
+
+        def check_hit(states, projectile_position):
+            nonlocal players_to_skip
+            state: PlayerStateDiff
+            for state in states:
+                if state.id in players_to_skip:
+                    continue
+                length = (state.get_position() - projectile_position + p3d.Vec3(0, 0, 0.5)).length()
+                if length < PlayerController.COLLISION_RADIUS:
+                    players_to_skip.append(state.id)
+                    messenger.send("player-damage", [state.id])
+                    print("compensated for player {} hit".format(state.id))
+
+        check_hit(self.game_state_history[i].player_state.values(), projectile.position)
+
+        samples = 5
+        while i <= last_history_index:
+            dt = (self.game_state_history[i].step.end - timestamp_sec) / samples
+            for _ in range(samples):  # for more precision in finding hits
+                projectile.update_position_by_dt(dt)
+                check_hit(self.game_state_history[i].player_state.values(), projectile.position)
+            timestamp_sec = self.game_state_history[i].step.end
+            i += 1
+        pass
 
     def __find_room_for(self, address):
         new_player_controller = self.__add_new_player(address, str(self.next_player_id))
@@ -86,16 +172,27 @@ class Server(ShowBase):
             new_player_controller.get_state()
         )
 
-    def broadcast_global_state(self, task):
-        self.frames_processed += 1
-        if self.frames_processed % INV_TICK_RATE != 0:  # i.e. 60fps / 3 = tick rate 20
-            return task.cont
-
+    def handle_game_state(self, task):
         # prepare current snapshot of game state
         game_state = GameStateDiff(TimeStep(begin=0, end=time.time()))
         game_state.player_state \
             = {player.get_id(): player.get_state() for player in self.active_players.values()}
 
+        # broadcast states "tick rate" times per second
+        self.frames_processed += 1
+        if self.frames_processed % INV_TICK_RATE == 0:  # i.e. 60fps / 3 = tick rate 20
+            self.__broadcast_game_state(game_state)
+
+        # save the snapshot to history
+        game_state.step = TimeStep(begin=self.last_game_state_timestamp, end=game_state.step.end)
+        self.game_state_history.append(game_state)
+        while len(self.game_state_history) > 0 \
+                and self.game_state_history[0].step.end < time.time() - 0.5:
+            self.game_state_history.popleft()
+
+        return task.cont
+
+    def __broadcast_game_state(self, game_state):
         self.network_transfer_builder.add("type", Messages.GLOBAL_STATE)
         game_state.transfer(self.network_transfer_builder)
         address: Address
@@ -107,8 +204,6 @@ class Server(ShowBase):
             )
         # reset=False left previous builder state, clean it up after pinging every player
         self.network_transfer_builder.cleanup()
-
-        return task.cont
 
     def broadcast_player_disconnected(self, task):
         # todo: client is active as long as it sends KEEP_ALIVE from time to time
@@ -132,7 +227,7 @@ class Server(ShowBase):
 
     def __add_new_player(self, address: Address, id: str) -> PlayerController:
         new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id)
-        new_player_state.set_position(self.player_positions[0])
+        new_player_state.set_position((self.player_positions[int(new_player_state.id)]))
         model = self.node_path_factory.get_player_model()
         model.reparent_to(self.render)
         new_player_controller = PlayerController(model, new_player_state)
@@ -146,11 +241,12 @@ class Server(ShowBase):
             player_collider.show()
 
         taskMgr.add(new_player_controller.task_update_position, "update player position")
+        self.accept(f"bullet-into-player{id}", self.handle_bullet_hit)
 
         return new_player_controller
 
     def __setup_collisions(self):
-        setup_collisions(self, self.tiles, MAP_SIZE)
+        setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
 
     # to be called after __setup_collisions()
     def __setup_view(self):

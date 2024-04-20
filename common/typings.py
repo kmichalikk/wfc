@@ -20,6 +20,7 @@ class Messages(IntEnum):
     LEAVE_ROOM = auto()
     GLOBAL_STATE = auto()
     UPDATE_INPUT = auto()
+    FIRE_GUN = auto()
     NEW_PLAYER = auto()
 
 

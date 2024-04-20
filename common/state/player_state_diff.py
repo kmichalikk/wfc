@@ -47,6 +47,9 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
     def set_position(self, position: Vec3):
         self.motion_state.position = position
 
+    def get_direction(self) -> Vec3:
+        return self.motion_state.direction
+
     def get_model_angle(self) -> float:
         return self.motion_state.angle
 

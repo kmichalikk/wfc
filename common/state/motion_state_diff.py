@@ -10,6 +10,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.step = step
         self.position: Vec3 = position
         self.velocity: Vec3 = velocity
+        self.direction: Vec3 = Vec3(0, 1, 0) if self.velocity.length() < 0.01 else self.velocity.normalized()
         self.acceleration: Vec3 = acceleration
         self.angle: float = 0
 
@@ -44,8 +45,8 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         lerp_state = MotionStateDiff(
             self.step,
             (other.position - self.position) * t,
-            0,
-            0,
+            Vec3(0, 0, 0),
+            Vec3(0, 0, 0),
             self.player_id
         )
         lerp_state.angle = (other.angle - self.angle) * t
@@ -84,7 +85,8 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.position.set_x(self.position.get_x() + self.velocity.get_x() * self.damping ** dt)
         self.position.set_y(self.position.get_y() + self.velocity.get_y() * self.damping ** dt)
         if self.velocity.length() > 0.01:
-            self.angle = -self.velocity.normalized().signed_angle_deg(Vec3(0, 1, 0), Vec3(0, 0, 1))
+            self.direction = self.velocity.normalized()
+            self.angle = -self.direction.signed_angle_deg(Vec3(0, 1, 0), Vec3(0, 0, 1))
 
     def cut_end(self, new_end: float):
         """

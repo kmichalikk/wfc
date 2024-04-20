@@ -1,20 +1,25 @@
 import time
+import panda3d.core as p3d
 
-from panda3d.core import NodePath, CollisionSphere, Vec3
 from common.collision.collision_object import CollisionObject
 from common.state.player_state_diff import PlayerStateDiff
 from common.typings import Input, TimeStep
 
 
 class PlayerController(CollisionObject):
-    def __init__(self, model: NodePath, player_state: PlayerStateDiff, ghost=False):
+    COLLISION_RADIUS = 0.25
+
+    def __init__(self, model: p3d.NodePath, player_state: PlayerStateDiff, ghost=False):
         if ghost:
             # todo: refactor - ghost as separate class (without collision object, identical otherwise)
-            super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 5, 0.25)])
+            super().__init__(parent=model.parent, name="player" + player_state.id,
+                             shapes=[p3d.CollisionSphere(0, 0, 5, self.COLLISION_RADIUS)])
         else:
-            super().__init__(parent=model.parent, name="player", shapes=[CollisionSphere(0, 0, 0.5, 0.25)])
+            super().__init__(parent=model.parent, name="player" + player_state.id,
+                             shapes=[p3d.CollisionSphere(0, 0, 0.5, self.COLLISION_RADIUS)])
 
         self.model = model
+        self.colliders[0].set_tag('id', player_state.id)
         if ghost:  # comment out to see the server ghost
             self.model.hide()
         self.state = player_state

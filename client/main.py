@@ -1,3 +1,5 @@
+import time
+
 import simplepbr
 
 from direct.showbase.ShowBase import ShowBase
@@ -65,6 +67,13 @@ class Game(ShowBase):
         self.accept("d-up", lambda: self.handle_input("-right"))
         self.accept("a", lambda: self.handle_input("+left"))
         self.accept("a-up", lambda: self.handle_input("-left"))
+        self.accept("space-up", lambda: self.handle_bullet())
+
+    def handle_bullet(self):
+        direction = self.game_manager.shoot_bullet()
+        timestamp = int(time.time()*1000)
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_gun_trigger(direction, timestamp),
+                                     "send input on next frame")
 
     def handle_input(self, input: Input):
         self.game_manager.main_player.update_input(input)

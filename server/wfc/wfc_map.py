@@ -18,7 +18,7 @@ class WFCMap:
             print("unreachable player")
             grid = self.generator.generate(size, players_count)
             graph = self.__get_graph(grid)
-            players_cells_indexes = [i * size + j for i, j in [grid.players_cells]]
+            players_cells_indexes = [cell.id for cell in grid.players_cells]
 
         result = []
         for i in range(size):
