@@ -8,6 +8,9 @@ from typing import Union
 from direct.showbase import ShowBase
 from direct.task import Task
 
+
+from client.connection.waiting_screen import WaitingScreen
+
 from common.collision.setup import setup_collisions
 from common.config import TIME_STEP
 from common.objects.bullet import Bullet
@@ -29,6 +32,7 @@ class GameManager:
         # main player displayed model and more accurate invisible model used for reference
         self.main_player: Union[None, PlayerController] = None
         self.main_player_server_view: Union[None, PlayerController] = None
+        self.active_players = 0
 
         # frame by frame diffs to apply on server state if it lags behind
         self.game_state_diffs: deque[GameStateDiff] = deque()
@@ -57,6 +61,8 @@ class GameManager:
         self.node_path_factory = node_path_factory
         self.sync_tasks: dict[str, Task] = {}
 
+        self.waiting_screen = WaitingScreen(game.loader)
+
     def setup_player(self, player_state: PlayerStateDiff):
         player_node_path = self.node_path_factory.get_player_model()
         player_node_path.reparent_to(self.game.render)
@@ -68,6 +74,10 @@ class GameManager:
 
         self.game_state.player_state[player_state.id] = player_state
         self.players[player_state.id] = player
+        self.active_players += 1
+        if self.active_players >= self.game.expected_players:
+            self.waiting_screen.hide()
+            self.game.attach_input()
 
         return player
 
@@ -268,3 +278,7 @@ class GameManager:
         for tile_data in tiles:
             tile = create_new_tile(game.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"])
             tile.reparent_to(game.render)
+
+        if self.active_players < self.game.expected_players:
+            self.waiting_screen.display()
+

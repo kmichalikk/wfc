@@ -38,15 +38,14 @@ class Game(ShowBase):
 
         # initialize GameManager, don't start the game until self.ready
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
-        self.ready = False
 
     def ready_handler(self, game_config: GameConfig):
+        self.expected_players = game_config.expected_players
         self.game_manager.setup_map(self, game_config.tiles, game_config.size)
         for state in game_config.player_states:
             player = self.game_manager.setup_player(state)
             if state.id == game_config.id:
                 self.game_manager.set_main_player(player)
-                self.attach_input()
 
         # now the game is ready to start, so we start listening for server changes
         self.connection_manager.subscribe_for_game_state_change(self.game_state_change)
@@ -88,5 +87,5 @@ if __name__ == "__main__":
     game = Game()
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
-    # PStatClient.connect()
+    #PStatClient.connect()
     game.run()

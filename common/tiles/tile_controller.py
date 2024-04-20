@@ -36,12 +36,12 @@ collision_shapes = {
     "plants_1": [CollisionBox(Point3(-0.6, 0.3, 0.5), 0.1, 0.1, 0.5),
                  CollisionSphere(0.15, 0.25, 0.2, 0.2),
                  CollisionSphere(-0.4, -0.75, 0.2, 0.2)],
-    "water_concave_1": [CollisionBox(Point3(0.35, 0, 0.5), 0.65, 1, 1),
-                        CollisionBox(Point3(0, -0.35, 0.5), 1, 0.65, 1)],
-    "water_convex_1": [CollisionBox(Point3(0.35, -0.35, 0.5), 0.65, 0.65, 1)],
-    "water_extend_1": [CollisionBox(Point3(0, -0.35, 0.5), 1, 0.65, 1)],
-    "water_full_1": [CollisionBox(Point3(0, 0, 0.5), 1, 1, 1)],
     "border": [CollisionBox(Point3(0, 0, 0.5), 1, 1, 1)],
+    "water_concave_1": [],
+    "water_convex_1": [],
+    "water_extend_1": [],
+    "water_full_1": [],
+
     "empty_1": []
 }
 

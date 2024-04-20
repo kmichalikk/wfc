@@ -29,7 +29,7 @@ sys.path.append("../common")
 
 
 class Server(ShowBase):
-    def __init__(self, port, view=False):
+    def __init__(self, port, expected_players, view=False):
         if view:
             # show window for debug purposes, slows down everything
             super().__init__()
@@ -45,6 +45,7 @@ class Server(ShowBase):
         self.last_game_state_timestamp = 0
         self.next_player_id = 0
         self.frames_processed = 0
+        self.expected_players = expected_players
         print("[INFO] Starting WFC map generation")
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.bullet_factory = BulletFactory(self.render)
@@ -160,6 +161,7 @@ class Server(ShowBase):
         self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
         game_config = GameConfig(
             self.tiles,
+            self.expected_players,
             new_player_controller.get_id(),
             [player.get_state() for player in self.active_players.values()],
             MAP_SIZE
@@ -256,7 +258,7 @@ class Server(ShowBase):
         self.accept('player' + player.get_id() + '-into-safe_space1', player.into_safe_space)
         self.accept('player' + player.get_id() + '-into-safe_space2', player.into_safe_space)
         self.accept('player' + player.get_id() + '-into-safe_space3', player.into_safe_space)
-        self.accept('player' + player.get_id() + '-into-flag', player.flag_pickup, [self.flag])
+        #self.accept('player' + player.get_id() + '-into-flag', player.flag_pickup, [self.flag])
 
     # to be called after __setup_collisions()
     def __setup_view(self):
@@ -277,8 +279,12 @@ class Server(ShowBase):
 
 
 if __name__ == "__main__":
-    # server = Server(SERVER_PORT, True)  # this slows down the whole simulation, debug only
-    server = Server(SERVER_PORT)
+    if len(sys.argv) != 2:
+        print("Użycie: python -m server.main <liczba graczy>")
+        sys.exit(1)
+    expected_players = int(sys.argv[1])
+    # server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
+    server = Server(SERVER_PORT, expected_players)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()
