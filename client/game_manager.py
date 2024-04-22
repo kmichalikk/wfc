@@ -93,6 +93,7 @@ class GameManager:
         # add collider to main player controller
         player_collider = player.colliders[0]
         self.game.cTrav.addCollider(player_collider, self.game.pusher)
+        self.game.cTrav.addCollider(player_collider, self.game.collision_event_generator)
         self.game.pusher.addCollider(player_collider, player_collider)
 
         # add another controller for the player that doesn't directly respond to input

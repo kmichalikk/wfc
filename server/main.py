@@ -88,8 +88,11 @@ class Server(ShowBase):
                     trigger_timestamp
                 )
             elif type == Messages.FLAG_PICKED:
-                print("[INFO] Flag requested")
-                self.__find_flag_for(transfer.get_source(), transfer.get("player"))
+                print("[INFO] Flag requested by player "+transfer.get("player"))
+                self.handle_flag_pickup(transfer.get_source(), transfer.get("player"))
+            elif type == Messages.FLAG_DROPPED:
+                print("[INFO] Flag drop requested by player "+transfer.get("player"))
+                self.handle_flag_drop(transfer.get_source(), transfer.get("player"))
 
         return task.cont
 
@@ -123,7 +126,7 @@ class Server(ShowBase):
 
     def handle_player_damage(self, data):
         player_id = data[0]
-        # todo: do sth when player has been hit, only first time that event fired
+        self.handle_flag_drop(self.get_address_by_id(player_id), player_id)
         print("player {} was hit".format(player_id))
 
     def __update_position_compensate_time(self, projectile: Bullet):
@@ -180,17 +183,29 @@ class Server(ShowBase):
             new_player_controller.get_state()
         )
 
-    def __find_flag_for(self, player_address,  player):
-        addresses = self.active_players.keys()
-        for address in addresses:
-            self.network_transfer_builder.set_destination(address)
-            if not self.flag.taken():
+    def handle_flag_pickup(self, player_address,  player):
+        if not self.flag.taken():
+            print("[INFO] Flag picked by player " + player)
+            addresses = self.active_players.keys()
+            for address in addresses:
+                self.network_transfer_builder.set_destination(address)
                 self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_FLAG)
                 self.network_transfer_builder.add("player", player)
 
-            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-        self.pickup_flag(player_address)
+                self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+            self.player_flag_pickup(player_address)
 
+    def handle_flag_drop(self, player_address,  player):
+        if self.flag.taken() and player == self.flag.player.get_id():
+            print("[INFO] Flag dropped by player " + player)
+            addresses = self.active_players.keys()
+            for address in addresses:
+                self.network_transfer_builder.set_destination(address)
+                self.network_transfer_builder.add("type", Messages.PLAYER_DROPPED_FLAG)
+                self.network_transfer_builder.add("player", player)
+
+                self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+            self.player_flag_drop(player_address)
 
     def handle_game_state(self, task):
         # prepare current snapshot of game state
@@ -284,12 +299,19 @@ class Server(ShowBase):
         for c in self.tile_colliders:
             c.show()
 
-    def pickup_flag(self, address):
+    def player_flag_pickup(self, address):
         player = self.active_players[address]
-        self.flag.player = player
-        self.flag.model.wrtReparentTo(player.model)
-        player.state.pickup_flag()
+        self.flag.get_picked(player)
 
+    def player_flag_drop(self, address):
+        player = self.active_players[address]
+        self.flag.get_dropped(player)
+
+    def get_address_by_id(self, player_id):
+        for address, player_controller in self.active_players.items():
+            if player_controller.get_id() == player_id:
+                return address
+        return None
 
 
 if __name__ == "__main__":
@@ -297,8 +319,8 @@ if __name__ == "__main__":
         print("Użycie: python -m server.main <liczba graczy>")
         sys.exit(1)
     expected_players = int(sys.argv[1])
-    server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
-    #server = Server(SERVER_PORT, expected_players)
+    #server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
+    server = Server(SERVER_PORT, expected_players)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()

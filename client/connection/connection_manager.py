@@ -73,6 +73,13 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
+    def send_flag_drop_trigger(self, player, timestamp: int):
+        self.network_transfer_builder.add("type", Messages.FLAG_DROPPED)
+        self.network_transfer_builder.add("timestamp", timestamp)
+        self.network_transfer_builder.add("player", player)
+        self.network_transfer_builder.set_destination(self.server_address)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
     def process_messages(self, task):
         for transfer in self.udp_connection.get_queued_transfers():
             type = transfer.get("type")
@@ -88,6 +95,8 @@ class ConnectionManager(DirectObject):
                 player_state.restore(transfer)
                 self.new_player_subscriber(player_state)
             elif type == Messages.PLAYER_PICKED_FLAG:
-                self.client.pick_flag(transfer.get("player"))
+                self.client.player_flag_pickup(transfer.get("player"))
+            elif type == Messages.PLAYER_DROPPED_FLAG:
+                self.client.player_flag_drop(transfer.get("player"))
 
         return task.cont

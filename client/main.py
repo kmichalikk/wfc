@@ -69,6 +69,7 @@ class Game(ShowBase):
         self.accept("a", lambda: self.handle_input("+left"))
         self.accept("a-up", lambda: self.handle_input("-left"))
         self.accept("space-up", lambda: self.handle_bullet())
+        self.accept("q", lambda: self.handle_flag_drop())
 
     def handle_bullet(self):
         direction = self.game_manager.shoot_bullet()
@@ -81,11 +82,19 @@ class Game(ShowBase):
         self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_trigger(player.get_id(), timestamp),
                                      "send input on next frame")
 
-    def pick_flag(self, id):
+    def handle_flag_drop(self):
+        player = self.game_manager.main_player
+        timestamp = int(time.time() * 1000)
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_drop_trigger(player.get_id(), timestamp),
+                                     "send input on next frame")
+
+    def player_flag_pickup(self, id):
         player = self.game_manager.players[id]
-        self.flag.player = player
-        self.flag.model.wrtReparentTo(player.model)
-        player.state.pickup_flag()
+        self.flag.get_picked(player)
+
+    def player_flag_drop(self, id):
+        player = self.game_manager.players[id]
+        self.flag.get_dropped(player)
 
     def handle_input(self, input: Input):
         self.game_manager.main_player.update_input(input)

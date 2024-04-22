@@ -56,6 +56,9 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
     def pickup_flag(self):
         self.slot: Item = "flag"
 
+    def drop_flag(self):
+        self.slot: Item = "empty"
+
     def update_motion(self):
         """ works only for full diffs (step.begin == 0) """
         self.motion_state.update()

@@ -12,7 +12,8 @@ def setup_collisions(game, tiles, map_size, bullet_factory):
     game.pusher.setHorizontal(True)
     game.collision_event_generator = p3d.CollisionHandlerEvent()
     game.collision_event_generator.add_in_pattern('%fn-into-%in')
-    game.pusher.add_in_pattern('%fn-into-%in')
+
+    game.cTrav.add_collider(game.flag.colliders[0], game.collision_event_generator)
 
     for bullet in bullet_factory.bullets:
         game.cTrav.add_collider(bullet.colliders[0], game.collision_event_generator)
