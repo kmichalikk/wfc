@@ -43,7 +43,7 @@ class Game(ShowBase):
 
     def ready_handler(self, game_config: GameConfig):
         self.expected_players = game_config.expected_players
-        self.game_manager.setup_map(self, game_config.tiles, game_config.size)
+        self.game_manager.setup_map(self, game_config.tiles, game_config.size, game_config.season)
         for state in game_config.player_states:
             player = self.game_manager.setup_player(state)
             if state.id == game_config.id:

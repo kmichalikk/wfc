@@ -1,3 +1,4 @@
+import random
 import sys
 import time
 from collections import deque
@@ -47,6 +48,7 @@ class Server(ShowBase):
         self.next_player_id = 0
         self.frames_processed = 0
         self.expected_players = expected_players
+        self.season = random.choices([0, 1], weights=[5, 5], k=1)[0]
         print("[INFO] Starting WFC map generation")
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.bullet_factory = BulletFactory(self.render)
@@ -172,7 +174,8 @@ class Server(ShowBase):
             self.expected_players,
             new_player_controller.get_id(),
             [player.get_state() for player in self.active_players.values()],
-            MAP_SIZE
+            MAP_SIZE,
+            self.season
         )
         # fill game_config
         game_config.transfer(self.network_transfer_builder)
@@ -262,7 +265,7 @@ class Server(ShowBase):
     def __add_new_player(self, address: Address, id: str) -> PlayerController:
         new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id)
         new_player_state.set_position((self.player_positions[int(new_player_state.id)]))
-        model = self.node_path_factory.get_player_model()
+        model = self.node_path_factory.get_player_model(new_player_state.id)
         model.reparent_to(self.render)
         new_player_controller = PlayerController(model, new_player_state)
         self.active_players[address] = new_player_controller
@@ -319,8 +322,8 @@ if __name__ == "__main__":
         print("Użycie: python -m server.main <liczba graczy>")
         sys.exit(1)
     expected_players = int(sys.argv[1])
-    #server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
-    server = Server(SERVER_PORT, expected_players)
+    server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
+    #server = Server(SERVER_PORT, expected_players)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()

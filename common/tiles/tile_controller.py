@@ -2,9 +2,10 @@ import panda3d.core as p3d
 from panda3d.core import CollisionBox, Point3, CollisionSphere, CollisionCapsule
 
 
-def create_new_tile(loader: p3d.Loader, name: str, position: tuple, heading: int):
+def create_new_tile(loader: p3d.Loader, name: str, position: tuple, heading: int, season: int):
+    season_folder = "summer" if season == 0 else "winter"
     node_path = loader.load_model(
-        "../common/assets/models/{}".format(name if name[-3:] == "glb" else (name + ".glb"))
+        f"../common/assets/models/{season_folder}/{name if name[-3:] == 'glb' else (name + '.glb')}"
     )
     node_path.set_pos(*position)
     node_path.set_h(heading)

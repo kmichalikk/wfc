@@ -64,7 +64,7 @@ class GameManager:
         self.waiting_screen = WaitingScreen(game.loader)
 
     def setup_player(self, player_state: PlayerStateDiff):
-        player_node_path = self.node_path_factory.get_player_model()
+        player_node_path = self.node_path_factory.get_player_model(player_state.id)
         player_node_path.reparent_to(self.game.render)
         player = PlayerController(
             player_node_path,
@@ -101,7 +101,7 @@ class GameManager:
         # the difference in position of this object and main player controller
         # can be linearly interpolated to present smooth motion
         # while being "mostly" correct compared to server version
-        model = self.node_path_factory.get_player_model()
+        model = self.node_path_factory.get_player_model(player.get_id())
         model.reparent_to(self.game.render)
         self.main_player_server_view = PlayerController(
             model,
@@ -257,7 +257,7 @@ class GameManager:
             self.server_game_state_transfer_deque.popleft()
         self.tick_update = True
 
-    def setup_map(self, game, tiles, map_size):
+    def setup_map(self, game, tiles, map_size, season):
         game.disableMouse()
 
         properties = p3d.WindowProperties()
@@ -267,6 +267,8 @@ class GameManager:
         point_light_node = game.render.attach_new_node(p3d.PointLight("light"))
         point_light_node.set_pos(0, -10, 10)
         game.render.set_light(point_light_node)
+
+        game.season = season
 
         setup_collisions(game, tiles, map_size, self.bullet_factory)
 
@@ -280,7 +282,7 @@ class GameManager:
         game.taskMgr.add(update_camera, "update camera")
 
         for tile_data in tiles:
-            tile = create_new_tile(game.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"])
+            tile = create_new_tile(game.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"], season)
             tile.reparent_to(game.render)
 
         if self.active_players < self.game.expected_players:

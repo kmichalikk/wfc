@@ -1,3 +1,5 @@
+import random
+
 from queue import PriorityQueue, Queue
 from typing import Union
 
@@ -30,16 +32,23 @@ class WFCGridGenerator:
 
         self.grid = WFCGrid(size, cells)
 
-        collapsed_count = len(players_positions) + 1
+        collapsed_count = len(players_positions) + (2 * (size-2) - 1)
         pq: PriorityQueue[WFCCell] = PriorityQueue()
         to_fix = []
         cell = cells[4][4]
         cell.set_collapsed("empty_1")
         to_fix.append(cell)
 
+        for i in range(2, size - 2):
+            for j in range(2, size - 2):
+                if i == j or i + j == size - 1:
+                    cell = cells[i][j]
+                    cell.set_collapsed("empty_1")
+                    to_fix.append(cell)
+
         for x, y in players_positions:
             cell = cells[x][y]
-            cell.set_collapsed("empty_1")
+            cell.set_collapsed(random.choices(["empty_1", "plants_1"], weights=[8, 2], k=1)[0])
             cell.place_player()
             self.grid.players_cells.append(cell)
             to_fix.append(cell)

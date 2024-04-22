@@ -27,7 +27,7 @@ def setup_collisions(game, tiles, map_size, bullet_factory):
     tiles_parent = NodePath("tiles")
     tile: p3d.NodePath
     for tile_data in tiles:
-        tile = create_new_tile(game.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"])
+        tile = create_new_tile(game.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"], game.season)
         tile.reparent_to(tiles_parent)
         game.tile_colliders.append(
             CollisionObject(
