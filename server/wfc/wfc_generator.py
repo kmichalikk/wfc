@@ -30,7 +30,7 @@ class WFCGridGenerator:
 
         self.grid = WFCGrid(size, cells)
 
-        collapsed_count = len(players_positions)
+        collapsed_count = len(players_positions) + 1
         pq: PriorityQueue[WFCCell] = PriorityQueue()
         to_fix = []
         cell = cells[4][4]

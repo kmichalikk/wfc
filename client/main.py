@@ -10,6 +10,7 @@ from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
 
 from common.config import FRAMERATE, SERVER_ADDRESS, SERVER_PORT
+from common.objects.flag import Flag
 from common.state.game_config import GameConfig
 from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_node_path_factory import TileNodePathFactory
@@ -32,12 +33,13 @@ class Game(ShowBase):
         simplepbr.init()
 
         # initialize ConnectionManager and subscribe to all event it handles
-        self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT))
+        self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT), self)
         self.connection_manager.wait_for_connection(self.ready_handler)
         self.connection_manager.subscribe_for_new_player(self.new_player_handler)
 
         # initialize GameManager, don't start the game until self.ready
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
+        self.flag = Flag(self)
 
     def ready_handler(self, game_config: GameConfig):
         self.expected_players = game_config.expected_players
@@ -73,6 +75,17 @@ class Game(ShowBase):
         timestamp = int(time.time()*1000)
         self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_gun_trigger(direction, timestamp),
                                      "send input on next frame")
+
+    def handle_flag(self, player, entry):
+        timestamp = int(time.time() * 1000)
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_trigger(player.get_id(), timestamp),
+                                     "send input on next frame")
+
+    def pick_flag(self, id):
+        player = self.game_manager.players[id]
+        self.flag.player = player
+        self.flag.model.wrtReparentTo(player.model)
+        player.state.pickup_flag()
 
     def handle_input(self, input: Input):
         self.game_manager.main_player.update_input(input)

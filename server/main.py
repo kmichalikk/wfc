@@ -15,6 +15,7 @@ from common.collision.setup import setup_collisions
 from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
+from common.objects.flag import Flag
 from common.player.player_controller import PlayerController
 from common.state.game_config import GameConfig
 from common.state.game_state_diff import GameStateDiff
@@ -51,6 +52,7 @@ class Server(ShowBase):
         self.bullet_factory = BulletFactory(self.render)
         self.projectiles_to_process: list[Bullet] = []
         self.bullets: list[Bullet] = []
+        self.flag = Flag(self)
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
@@ -85,6 +87,10 @@ class Server(ShowBase):
                     player,
                     trigger_timestamp
                 )
+            elif type == Messages.FLAG_PICKED:
+                print("[INFO] Flag requested")
+                self.__find_flag_for(transfer.get_source(), transfer.get("player"))
+
         return task.cont
 
     def update_bullets(self, task):
@@ -154,7 +160,6 @@ class Server(ShowBase):
 
     def __find_room_for(self, address):
         new_player_controller = self.__add_new_player(address, str(self.next_player_id))
-        self.__observe_collisions(new_player_controller)
         self.network_transfer_builder.add("id", str(self.next_player_id))
         self.next_player_id += 1
         self.network_transfer_builder.set_destination(address)
@@ -175,12 +180,23 @@ class Server(ShowBase):
             new_player_controller.get_state()
         )
 
+    def __find_flag_for(self, player_address,  player):
+        addresses = self.active_players.keys()
+        for address in addresses:
+            self.network_transfer_builder.set_destination(address)
+            if not self.flag.taken():
+                self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_FLAG)
+                self.network_transfer_builder.add("player", player)
+
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+        self.pickup_flag(player_address)
+
+
     def handle_game_state(self, task):
         # prepare current snapshot of game state
         game_state = GameStateDiff(TimeStep(begin=0, end=time.time()))
         game_state.player_state \
             = {player.get_id(): player.get_state() for player in self.active_players.values()}
-
         # broadcast states "tick rate" times per second
         self.frames_processed += 1
         if self.frames_processed % INV_TICK_RATE == 0:  # i.e. 60fps / 3 = tick rate 20
@@ -251,15 +267,6 @@ class Server(ShowBase):
     def __setup_collisions(self):
         setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
 
-    def __observe_collisions(self, player):
-        self.accept('player' + player.get_id() + '-into-water', player.into_water)
-        self.accept('player' + player.get_id() + '-into-grass', player.out_of_water)
-        self.accept('player' + player.get_id() + '-into-safe_space0', player.into_safe_space)
-        self.accept('player' + player.get_id() + '-into-safe_space1', player.into_safe_space)
-        self.accept('player' + player.get_id() + '-into-safe_space2', player.into_safe_space)
-        self.accept('player' + player.get_id() + '-into-safe_space3', player.into_safe_space)
-        #self.accept('player' + player.get_id() + '-into-flag', player.flag_pickup, [self.flag])
-
     # to be called after __setup_collisions()
     def __setup_view(self):
         simplepbr.init()
@@ -277,14 +284,21 @@ class Server(ShowBase):
         for c in self.tile_colliders:
             c.show()
 
+    def pickup_flag(self, address):
+        player = self.active_players[address]
+        self.flag.player = player
+        self.flag.model.wrtReparentTo(player.model)
+        player.state.pickup_flag()
+
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Użycie: python -m server.main <liczba graczy>")
         sys.exit(1)
     expected_players = int(sys.argv[1])
-    # server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
-    server = Server(SERVER_PORT, expected_players)
+    server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
+    #server = Server(SERVER_PORT, expected_players)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()

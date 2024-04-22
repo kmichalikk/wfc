@@ -9,7 +9,6 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.step = step
         self.motion_state: MotionStateDiff = MotionStateDiff.empty(id)
         self.slot: Item = "empty"
-        self.has_flag = False
         self.id: str = id
 
     def apply(self, other: 'PlayerStateDiff'):
@@ -53,6 +52,9 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
 
     def get_model_angle(self) -> float:
         return self.motion_state.angle
+
+    def pickup_flag(self):
+        self.slot: Item = "flag"
 
     def update_motion(self):
         """ works only for full diffs (step.begin == 0) """

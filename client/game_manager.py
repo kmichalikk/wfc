@@ -78,6 +78,8 @@ class GameManager:
         if self.active_players >= self.game.expected_players:
             self.waiting_screen.hide()
             self.game.attach_input()
+        else:
+            self.waiting_screen.update(self.active_players, self.game.expected_players)
 
         return player
 
@@ -86,6 +88,7 @@ class GameManager:
         self.game.taskMgr.add(self.sync_game_state, "sync game state", sort=1)
         self.game.taskMgr.add(self.game_state_snapshot, "store game state diffs", sort=2)
         self.game.accept("bullet-into-wall", self.handle_bullet_wall_hit)
+        self.game.accept('player' + player.get_id() + '-into-flag', self.game.handle_flag, [self.main_player])
 
         # add collider to main player controller
         player_collider = player.colliders[0]

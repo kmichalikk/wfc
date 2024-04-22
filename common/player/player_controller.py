@@ -30,6 +30,11 @@ class PlayerController(CollisionObject):
     def get_state(self) -> PlayerStateDiff:
         return self.state
 
+    def has_flag(self):
+        if self.state.slot == "flag":
+            return True
+        return False
+
     def replace_state(self, state: PlayerStateDiff):
         state.motion_state.active_inputs = self.state.motion_state.active_inputs
         self.state = state
@@ -58,27 +63,6 @@ class PlayerController(CollisionObject):
         self.state.step = TimeStep(self.state.step.begin, time.time())
         self.state.motion_state.step = TimeStep(self.state.motion_state.step.begin, time.time())
 
-    def into_water(self, entry):
-       self.state.motion_state.acceleration_rate = 0.25
-
-    def out_of_water(self, entry):
-        self.state.motion_state.acceleration_rate = 0.5
-
-    def flag_pickup(self, flag, entry):
-        if not self.state.has_flag:
-            self.state.has_flag = True
-            if flag.player:
-                flag.player.flag_drop(flag)
-            flag.player = self
-
-            flag.model.wrtReparentTo(self.model)
-
-    def flag_drop(self, flag):
-        if self.has_flag:
-            self.state.has_flag = False
-            flag.model.wrtReparentTo(self.model.parent)
-            flag.model.setPos(self.state.get_position())
-
     def into_safe_space(self, entry):
-        if entry.getFromNodePath().getName()[-1] == entry.getIntoNodePath().getName()[-1] and self.state.has_flag:
+        if entry.getFromNodePath().getName()[-1] == entry.getIntoNodePath().getName()[-1] and self.has_flag:
             print("Player " + self.get_id() + " has won the game!")

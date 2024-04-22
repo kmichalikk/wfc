@@ -15,9 +15,10 @@ from common.typings import Address, Messages
 
 class ConnectionManager(DirectObject):
     """ Proxy for UDP connection thread """
-    def __init__(self, server_address: Address):
+    def __init__(self, server_address: Address, client):
         super().__init__()
         self.server_address = server_address
+        self.client = client
 
         # set up class fields
         self.network_transfer_builder = NetworkTransferBuilder()
@@ -65,6 +66,13 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
+    def send_flag_trigger(self, player, timestamp: int):
+        self.network_transfer_builder.add("type", Messages.FLAG_PICKED)
+        self.network_transfer_builder.add("timestamp", timestamp)
+        self.network_transfer_builder.add("player", player)
+        self.network_transfer_builder.set_destination(self.server_address)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
     def process_messages(self, task):
         for transfer in self.udp_connection.get_queued_transfers():
             type = transfer.get("type")
@@ -79,5 +87,7 @@ class ConnectionManager(DirectObject):
                 player_state = PlayerStateDiff.empty(transfer.get("id"))
                 player_state.restore(transfer)
                 self.new_player_subscriber(player_state)
+            elif type == Messages.PLAYER_PICKED_FLAG:
+                self.client.pick_flag(transfer.get("player"))
 
         return task.cont

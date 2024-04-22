@@ -22,6 +22,9 @@ class Messages(IntEnum):
     UPDATE_INPUT = auto()
     FIRE_GUN = auto()
     NEW_PLAYER = auto()
+    FLAG_PICKED = auto()
+    PLAYER_DROPPED_FLAG = auto()
+    PLAYER_PICKED_FLAG = auto()
 
 
 class TimeStep(NamedTuple):
