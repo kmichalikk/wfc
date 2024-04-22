@@ -43,12 +43,12 @@ class WFCGridGenerator:
             for j in range(2, size - 2):
                 if i == j or i + j == size - 1:
                     cell = cells[i][j]
-                    cell.set_collapsed("empty_1")
+                    cell.set_collapsed(random.choices(["empty_1", "plants_1"], weights=[8, 2], k=1)[0])
                     to_fix.append(cell)
 
         for x, y in players_positions:
             cell = cells[x][y]
-            cell.set_collapsed(random.choices(["empty_1", "plants_1"], weights=[8, 2], k=1)[0])
+            cell.set_collapsed("empty_1")
             cell.place_player()
             self.grid.players_cells.append(cell)
             to_fix.append(cell)

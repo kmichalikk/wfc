@@ -322,8 +322,8 @@ if __name__ == "__main__":
         print("Użycie: python -m server.main <liczba graczy>")
         sys.exit(1)
     expected_players = int(sys.argv[1])
-    server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
-    #server = Server(SERVER_PORT, expected_players)
+    #server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
+    server = Server(SERVER_PORT, expected_players)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()
