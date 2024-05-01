@@ -22,9 +22,11 @@ class Flag(CollisionObject):
     def get_picked(self, player):
         self.player = player
         self.model.wrtReparentTo(player.model)
+        self.model.setPos(Vec3(0, 0, 1))
         player.state.pickup_flag()
 
     def get_dropped(self, player):
         self.player = None
         self.model.wrtReparentTo(player.model.parent)
+        self.model.setPos(player.model, 1, 1, 0)
         player.state.drop_flag()
