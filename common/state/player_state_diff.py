@@ -53,6 +53,12 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
     def get_model_angle(self) -> float:
         return self.motion_state.angle
 
+    def pickup_flag(self):
+        self.slot: Item = "flag"
+
+    def drop_flag(self):
+        self.slot: Item = "empty"
+
     def update_motion(self):
         """ works only for full diffs (step.begin == 0) """
         self.motion_state.update()

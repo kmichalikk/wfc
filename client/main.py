@@ -10,6 +10,7 @@ from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
 
 from common.config import FRAMERATE, SERVER_ADDRESS, SERVER_PORT
+from common.objects.flag import Flag
 from common.state.game_config import GameConfig
 from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_node_path_factory import TileNodePathFactory
@@ -32,21 +33,21 @@ class Game(ShowBase):
         simplepbr.init()
 
         # initialize ConnectionManager and subscribe to all event it handles
-        self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT))
+        self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT), self)
         self.connection_manager.wait_for_connection(self.ready_handler)
         self.connection_manager.subscribe_for_new_player(self.new_player_handler)
 
         # initialize GameManager, don't start the game until self.ready
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
-        self.ready = False
+        self.flag = Flag(self)
 
     def ready_handler(self, game_config: GameConfig):
-        self.game_manager.setup_map(self, game_config.tiles, game_config.size)
+        self.expected_players = game_config.expected_players
+        self.game_manager.setup_map(self, game_config.tiles, game_config.size, game_config.season)
         for state in game_config.player_states:
             player = self.game_manager.setup_player(state)
             if state.id == game_config.id:
                 self.game_manager.set_main_player(player)
-                self.attach_input()
 
         # now the game is ready to start, so we start listening for server changes
         self.connection_manager.subscribe_for_game_state_change(self.game_state_change)
@@ -68,12 +69,32 @@ class Game(ShowBase):
         self.accept("a", lambda: self.handle_input("+left"))
         self.accept("a-up", lambda: self.handle_input("-left"))
         self.accept("space-up", lambda: self.handle_bullet())
+        self.accept("q", lambda: self.handle_flag_drop())
 
     def handle_bullet(self):
         direction = self.game_manager.shoot_bullet()
         timestamp = int(time.time()*1000)
         self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_gun_trigger(direction, timestamp),
                                      "send input on next frame")
+
+    def handle_flag(self, player, entry):
+        timestamp = int(time.time() * 1000)
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_trigger(player.get_id(), timestamp),
+                                     "send input on next frame")
+
+    def handle_flag_drop(self):
+        player = self.game_manager.main_player
+        timestamp = int(time.time() * 1000)
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_drop_trigger(player.get_id(), timestamp),
+                                     "send input on next frame")
+
+    def player_flag_pickup(self, id):
+        player = self.game_manager.players[id]
+        self.flag.get_picked(player)
+
+    def player_flag_drop(self, id):
+        player = self.game_manager.players[id]
+        self.flag.get_dropped(player)
 
     def handle_input(self, input: Input):
         self.game_manager.main_player.update_input(input)
@@ -88,5 +109,5 @@ if __name__ == "__main__":
     game = Game()
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
-    # PStatClient.connect()
+    #PStatClient.connect()
     game.run()

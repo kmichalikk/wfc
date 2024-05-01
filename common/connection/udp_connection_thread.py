@@ -51,7 +51,7 @@ class UDPConnectionThread(Thread):
             # handle incoming or outgoing depending on which socket got data first
             ready_sockets, _, _ = select([self.udp_socket, self.pipe_out_socket], [], [])
             if self.udp_socket in ready_sockets:
-                payload, addr = self.udp_socket.recvfrom(10240)
+                payload, addr = self.udp_socket.recvfrom(102400)
                 self.lock.acquire()
                 self.network_transfer_builder.set_source(addr)
                 self.incoming.append(self.network_transfer_builder.decode(payload))
