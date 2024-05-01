@@ -46,8 +46,6 @@ class PlayerController(CollisionObject):
     def update_position(self):
         self.state.set_position(self.colliders[0].get_pos())
         self.state.update_motion()
-        self.sync_position()
-        self.update_time_step()
 
     def sync_position(self):
         self.colliders[0].set_pos(self.state.get_position())
@@ -57,6 +55,7 @@ class PlayerController(CollisionObject):
 
     def task_update_position(self, task):
         self.update_position()
+        self.sync_position()
         return task.cont
 
     def update_time_step(self):

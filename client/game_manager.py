@@ -48,6 +48,7 @@ class GameManager:
 
         # flag to set if new server game state is expected to be processed on next frame
         self.tick_update = False
+        self.lerp_factor = 0.2
 
         # delay for other player state update
         # it allows for interpolation between previous server states
@@ -179,7 +180,7 @@ class GameManager:
                 self.main_player_server_view.sync_position()
                 self.main_player.update_position()
                 lerp = self.main_player.state.motion_state \
-                    .lerp(0.3, self.main_player_server_view.state.motion_state)
+                    .lerp(self.lerp_factor, self.main_player_server_view.state.motion_state)
                 self.main_player.state.motion_state.apply(lerp)
                 self.main_player.sync_position()
 
@@ -195,7 +196,7 @@ class GameManager:
         self.main_player_server_view.state.apply(diff)
         self.main_player_server_view.sync_position()
         lerp = self.main_player.state.motion_state \
-            .lerp(0.3, self.main_player_server_view.state.motion_state)
+            .lerp(self.lerp_factor, self.main_player_server_view.state.motion_state)
         self.main_player.state.motion_state.apply(lerp)
         self.main_player.sync_position()
 
@@ -261,7 +262,7 @@ class GameManager:
         game.disableMouse()
 
         properties = p3d.WindowProperties()
-        properties.set_size(1280, 800)
+        properties.set_size(800, 600)
         game.win.request_properties(properties)
 
         point_light_node = game.render.attach_new_node(p3d.PointLight("light"))
