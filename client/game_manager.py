@@ -1,10 +1,10 @@
 import time
 from collections import deque
-from queue import Queue
 
 import panda3d.core as p3d
 
 from typing import Union
+
 from direct.showbase import ShowBase
 from direct.task import Task
 
@@ -15,6 +15,7 @@ from common.collision.setup import setup_collisions
 from common.config import TIME_STEP
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
+from common.objects.cloud_factory import CloudFactory
 from common.state.game_state_diff import GameStateDiff
 from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_controller import create_new_tile
@@ -69,9 +70,11 @@ class GameManager:
         player_node_path.reparent_to(self.game.render)
         player = PlayerController(
             player_node_path,
-            player_state
+            player_state,
         )
         player.sync_position()
+        player.set_cloud_factory(CloudFactory(self.game.loader, self.game.render))
+        self.game.taskMgr.do_method_later(0.05, player.task_emit_cloud, 'emit cloud')
 
         self.game_state.player_state[player_state.id] = player_state
         self.players[player_state.id] = player
@@ -288,4 +291,3 @@ class GameManager:
 
         if self.active_players < self.game.expected_players:
             self.waiting_screen.display()
-

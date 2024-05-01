@@ -63,6 +63,9 @@ class PlayerStateDiff(SupportsNetworkTransfer, SupportsDiff):
         """ works only for full diffs (step.begin == 0) """
         self.motion_state.update()
 
+    def update_angle(self):
+        self.motion_state.update_angle()
+
     @classmethod
     def empty(cls, player_id: str):
         return cls(TimeStep(begin=0, end=0), player_id)

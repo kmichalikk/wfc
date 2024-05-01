@@ -79,6 +79,8 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         )
         self.position.set_x(self.position.get_x() + self.velocity.get_x() * dt)
         self.position.set_y(self.position.get_y() + self.velocity.get_y() * dt)
+
+    def update_angle(self):
         if self.velocity.length() > 0.01:
             self.direction = self.velocity.normalized()
             self.angle = -self.direction.signed_angle_deg(Vec3(0, 1, 0), Vec3(0, 0, 1))

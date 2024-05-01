@@ -16,7 +16,7 @@ class Bullet(CollisionObject):
         self.timestamp: int = timestamp
         self.position = position
         self.direction = direction.normalized()
-        self.velocity = 10
+        self.velocity = 15
 
     def update_position(self):
         dt = globalClock.get_dt()
