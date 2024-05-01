@@ -164,27 +164,33 @@ class Server(ShowBase):
         pass
 
     def __find_room_for(self, address):
-        new_player_controller = self.__add_new_player(address, str(self.next_player_id))
-        self.network_transfer_builder.add("id", str(self.next_player_id))
-        self.next_player_id += 1
-        self.network_transfer_builder.set_destination(address)
-        self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
-        game_config = GameConfig(
-            self.tiles,
-            self.expected_players,
-            new_player_controller.get_id(),
-            [player.get_state() for player in self.active_players.values()],
-            MAP_SIZE,
-            self.season
-        )
-        # fill game_config
-        game_config.transfer(self.network_transfer_builder)
-        # respond with data and notify other players
-        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-        self.broadcast_new_player(
-            new_player_controller.get_id(),
-            new_player_controller.get_state()
-        )
+        if len(self.active_players) < 4:
+            new_player_controller = self.__add_new_player(address, str(self.next_player_id))
+            self.network_transfer_builder.add("id", str(self.next_player_id))
+            self.next_player_id += 1
+            self.network_transfer_builder.set_destination(address)
+            self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
+            game_config = GameConfig(
+                self.tiles,
+                self.expected_players,
+                new_player_controller.get_id(),
+                [player.get_state() for player in self.active_players.values()],
+                MAP_SIZE,
+                self.season
+            )
+            # fill game_config
+            game_config.transfer(self.network_transfer_builder)
+            # respond with data and notify other players
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+            self.broadcast_new_player(
+                new_player_controller.get_id(),
+                new_player_controller.get_state()
+            )
+            self.update_flag_state(address)
+        else:
+            self.network_transfer_builder.set_destination(address)
+            self.network_transfer_builder.add("type", Messages.FIND_ROOM_FAIL)
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
     def handle_flag_pickup(self, player_address,  player):
         if not self.flag.taken():
@@ -316,6 +322,13 @@ class Server(ShowBase):
                 return address
         return None
 
+    def update_flag_state(self, address):
+        if self.flag.taken():
+            self.network_transfer_builder.set_destination(address)
+            self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_FLAG)
+            self.network_transfer_builder.add("player", self.flag.player.get_id())
+
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
