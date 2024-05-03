@@ -26,11 +26,5 @@ class WFCMap:
                         heading = 90
                 result.append({"node_path": grid.cells[i][j].collapsed_tile[:-1]+"1",
                                "pos": (i*2, j*2, 0), "heading": heading})
-        for i in range(size + 1):
-            result.append({"node_path": "border","pos": (-2, i * 2, 0), "heading": heading})
-            result.append({"node_path": "border", "pos": (i*2, -2, 0), "heading": heading})
-            result.append({"node_path": "border", "pos": (i * 2, size * 2, 0), "heading": heading})
-            result.append({"node_path": "border", "pos": (size * 2, i * 2, 0), "heading": heading})
-            result.append({"node_path": "border", "pos": (-2, -2, 0), "heading": heading})
 
         return result, [Vec3(pc.position[0]*2, pc.position[1]*2, 0) for pc in grid.players_cells]

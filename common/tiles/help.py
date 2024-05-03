@@ -27,9 +27,11 @@ with (open('slots.csv', 'r') as file):
         if "empty" in tile:
             tiles_map[tile]["weight"] = 20
         elif "water" in tile:
-            tiles_map[tile]["weight"] = 8
+            tiles_map[tile]["weight"] = 10
         elif "slim" in tile:
-            tiles_map[tile]["weight"] = 2
+            tiles_map[tile]["weight"] = 3
+        elif "full" in tile:
+            tiles_map[tile]["weight"] = 0.01
         else:
             tiles_map[tile]["weight"] = 5
 

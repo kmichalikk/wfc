@@ -7,7 +7,10 @@ import panda3d.core as p3d
 class Bullet(CollisionObject):
     def __init__(self, parent: p3d.NodePath, position: p3d.Vec3, direction: p3d.Vec3, owner_id: str, bullet_id: int,
                  timestamp: int):
-        super().__init__(parent, 'bullet', [p3d.CollisionSphere(0, 0, 0, 0.1)])
+        collision_sphere = p3d.CollisionSphere(0, 0, 0, 0.1)
+        collision_sphere.set_tangible(False)
+        super().__init__(parent, 'bullet', [collision_sphere])
+
         self.colliders[0].set_pos(position)
         self.colliders[0].show()
         self.colliders[0].set_tag('id', str(bullet_id))

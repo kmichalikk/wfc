@@ -13,6 +13,7 @@ class Flag(CollisionObject):
         self.model.reparentTo(game.render)
 
         collision_spheres = [CollisionSphere(0, 0, 0.5, 0.2)]
+        collision_spheres[0].set_tangible(False)
 
         super().__init__(self.model, "flag", collision_spheres)
 
