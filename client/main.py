@@ -3,7 +3,7 @@ import time
 import simplepbr
 
 from direct.showbase.ShowBase import ShowBase
-from direct.showbase.ShowBaseGlobal import globalClock
+from direct.showbase.ShowBaseGlobal import globalClock, aspect2d
 from panda3d.core import ClockObject, PStatClient, load_prc_file_data
 
 from client.game_manager import GameManager
@@ -31,6 +31,8 @@ class Game(ShowBase):
         ShowBase.__init__(self)
         # proper textures & lighting
         simplepbr.init()
+
+        aspect2d.set_transparency(True)
 
         # initialize ConnectionManager and subscribe to all event it handles
         self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT), self)
