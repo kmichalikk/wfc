@@ -4,6 +4,7 @@ from collections import deque
 import panda3d.core as p3d
 
 from typing import Union
+from common.config import MAP_SIZE
 
 from direct.showbase import ShowBase
 from direct.task import Task
@@ -93,6 +94,8 @@ class GameManager:
         self.game.taskMgr.add(self.game_state_snapshot, "store game state diffs", sort=2)
         self.game.accept("bullet-into-wall", self.handle_bullet_wall_hit)
         self.game.accept('player' + player.get_id() + '-into-flag', self.game.handle_flag, [self.main_player])
+        for i in range(0, MAP_SIZE//2):
+            self.game.accept('player' + player.get_id() + '-into-bolt' + str(i), self.game.pick_bolt)
 
         # add collider to main player controller
         player_collider = player.colliders[0]

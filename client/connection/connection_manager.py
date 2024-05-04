@@ -82,6 +82,13 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
+    def send_bolt_pickup_trigger(self, bolt_id: str, timestamp: int):
+        self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_BOLT)
+        self.network_transfer_builder.add("timestamp", timestamp)
+        self.network_transfer_builder.add("bolt_id", bolt_id)
+        self.network_transfer_builder.set_destination(self.server_address)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
     def process_messages(self, task):
         for transfer in self.udp_connection.get_queued_transfers():
             type = transfer.get("type")
@@ -103,5 +110,9 @@ class ConnectionManager(DirectObject):
                 self.client.player_flag_pickup(transfer.get("player"))
             elif type == Messages.PLAYER_DROPPED_FLAG:
                 self.client.player_flag_drop(transfer.get("player"))
+            elif type == Messages.BOLTS_SETUP:
+                self.client.setup_bolts(transfer.get("current_bolts"))
+            elif type == Messages.BOLTS_UPDATE:
+                self.client.update_bolts(transfer.get("old_bolt"), transfer.get("new_bolt"))
 
         return task.cont
