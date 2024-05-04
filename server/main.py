@@ -295,6 +295,7 @@ class Server(ShowBase):
         self.network_transfer_builder.add("type", Messages.GLOBAL_STATE)
         game_state.transfer(self.network_transfer_builder)
         address: Address
+
         for address in self.active_players.keys():
             # resend the same transfer to all players, change only destination
             self.network_transfer_builder.set_destination(address)
