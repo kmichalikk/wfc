@@ -8,8 +8,8 @@ from typing import Union
 from direct.showbase import ShowBase
 from direct.task import Task
 
-
-from client.connection.waiting_screen import WaitingScreen
+from client.screens.end_screen import EndScreen
+from client.screens.waiting_screen import WaitingScreen
 
 from common.collision.setup import setup_collisions
 from common.config import TIME_STEP
@@ -64,6 +64,7 @@ class GameManager:
         self.sync_tasks: dict[str, Task] = {}
 
         self.waiting_screen = WaitingScreen(game.loader)
+        self.end_screen = EndScreen(game.loader)
 
     def setup_player(self, player_state: PlayerStateDiff):
         player_node_path = self.node_path_factory.get_player_model(player_state.id)
@@ -96,7 +97,6 @@ class GameManager:
 
         # add collider to main player controller
         player_collider = player.colliders[0]
-        player_collider.show()
         self.game.cTrav.addCollider(player_collider, self.game.pusher)
         self.game.pusher.addCollider(player_collider, player_collider)
 
@@ -262,10 +262,7 @@ class GameManager:
         self.tick_update = True
 
     def game_end_handler(self, winner_id):
-        if self.main_player.get_id() == winner_id:
-            print("player has won the game")
-        else:
-            print("game over")
+        self.end_screen.display(self.main_player.get_id() == winner_id, winner_id)
 
     def setup_map(self, game, tiles, map_size, season):
         game.disableMouse()

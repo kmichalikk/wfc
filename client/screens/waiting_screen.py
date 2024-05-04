@@ -2,7 +2,7 @@ from direct.showbase.ShowBaseGlobal import aspect2d
 from panda3d.core import TextNode, Vec3
 
 
-class WaitingScreen():
+class WaitingScreen:
     def __init__(self, loader):
         self.textNodePath = None
         self.font = loader.loadFont("../common/assets/Font.ttf")
@@ -24,4 +24,3 @@ class WaitingScreen():
     def update(self, active_players, expected_players):
         player_count_text = f"{active_players}/{expected_players}"
         self.text.setText(f"Oczekiwanie na innych graczy...\n{player_count_text}")
-
