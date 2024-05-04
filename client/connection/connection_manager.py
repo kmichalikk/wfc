@@ -39,11 +39,12 @@ class ConnectionManager(DirectObject):
         # begin processing of incoming messages
         taskMgr.add(self.process_messages, "process incoming transfers")
 
-    def wait_for_connection(self, ready_handler: Callable[[GameConfig], None]):
+    def wait_for_connection(self, ready_handler: Callable[[GameConfig], None], username):
         """ Add listener for server sending room information, send a room request """
         self.ready_handler = ready_handler
         self.network_transfer_builder.set_destination(self.server_address)
         self.network_transfer_builder.add("type", Messages.FIND_ROOM)
+        self.network_transfer_builder.add("username", username)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
     def subscribe_for_game_state_change(self, subscriber: Callable[[NetworkTransfer], None]):

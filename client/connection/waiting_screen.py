@@ -7,7 +7,7 @@ class WaitingScreen():
         self.textNodePath = None
         self.font = loader.loadFont("../common/assets/Font.ttf")
         self.text = TextNode('waiting')
-        self.text.setText("Oczekiwanie na innych graczy...")
+        self.text.setText("Waiting for other players...")
         self.text.setFont(self.font)
         self.text.setCardColor(0, 0, 0, 0.5)
         self.text.setCardAsMargin(20, 20, 20, 20)
@@ -23,5 +23,5 @@ class WaitingScreen():
 
     def update(self, active_players, expected_players):
         player_count_text = f"{active_players}/{expected_players}"
-        self.text.setText(f"Oczekiwanie na innych graczy...\n{player_count_text}")
+        self.text.setText(f"Waiting for other players...\n{player_count_text}")
 

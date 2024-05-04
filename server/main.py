@@ -26,6 +26,7 @@ from common.connection.udp_connection_thread import UDPConnectionThread
 from common.transfer.network_transfer_builder import NetworkTransferBuilder
 from common.typings import Messages, Address, TimeStep
 from server.wfc.wfc_starter import start_wfc
+from server.accounts.logging_manager import LoggingManager
 
 sys.path.append("../common")
 
@@ -40,6 +41,7 @@ class Server(ShowBase):
         self.view = view
         self.port = port
         self.udp_connection = UDPConnectionThread('0.0.0.0', port, server=True)
+        self.logging_manager = LoggingManager()
         self.node_path_factory = TileNodePathFactory(self.loader)
         self.network_transfer_builder = NetworkTransferBuilder()
         self.active_players: dict[Address, PlayerController] = {}
@@ -48,7 +50,7 @@ class Server(ShowBase):
         self.next_player_id = 0
         self.frames_processed = 0
         self.expected_players = expected_players
-        self.season = random.choices([0, 1], weights=[5, 5], k=1)[0]
+        self.season = random.choices([0, 1], weights=[9, 1], k=1)[0]
         print("[INFO] Starting WFC map generation")
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.bullet_factory = BulletFactory(self.render)
@@ -76,7 +78,7 @@ class Server(ShowBase):
                 print("[INFO] New client")
             elif type == Messages.FIND_ROOM:
                 print("[INFO] Room requested")
-                self.__find_room_for(transfer.get_source())
+                self.__find_room_for(transfer.get_source(), transfer.get("username"))
             elif type == Messages.UPDATE_INPUT:
                 print("[INFO] Update input")
                 if transfer.get_source() in self.active_players:
@@ -163,9 +165,9 @@ class Server(ShowBase):
             i += 1
         pass
 
-    def __find_room_for(self, address):
+    def __find_room_for(self, address, username):
         if len(self.active_players) < 4:
-            new_player_controller = self.__add_new_player(address, str(self.next_player_id))
+            new_player_controller = self.__add_new_player(address, str(self.next_player_id), username)
             self.network_transfer_builder.add("id", str(self.next_player_id))
             self.next_player_id += 1
             self.network_transfer_builder.set_destination(address)
@@ -187,6 +189,7 @@ class Server(ShowBase):
                 new_player_controller.get_state()
             )
             self.update_flag_state(address)
+            self.log_in(username)
         else:
             self.network_transfer_builder.set_destination(address)
             self.network_transfer_builder.add("type", Messages.FIND_ROOM_FAIL)
@@ -268,7 +271,7 @@ class Server(ShowBase):
         # reset=False left previous builder state, clean it up after pinging every player
         self.network_transfer_builder.cleanup()
 
-    def __add_new_player(self, address: Address, id: str) -> PlayerController:
+    def __add_new_player(self, address: Address, id: str, username: str) -> PlayerController:
         new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id)
         new_player_state.set_position((self.player_positions[int(new_player_state.id)]))
         model = self.node_path_factory.get_player_model(new_player_state.id)
@@ -287,6 +290,9 @@ class Server(ShowBase):
         self.accept(f"bullet-into-player{id}", self.handle_bullet_hit)
 
         return new_player_controller
+
+    def log_in(self, username):
+        self.logging_manager.login(username)
 
     def __setup_collisions(self):
         setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
@@ -329,6 +335,7 @@ class Server(ShowBase):
             self.network_transfer_builder.add("player", self.flag.player.get_id())
 
             self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
