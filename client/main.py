@@ -89,14 +89,12 @@ class Game(ShowBase):
                                      "send input on next frame")
 
     def handle_flag(self, player, entry):
-        timestamp = int(time.time() * 1000)
-        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_trigger(player.get_id(), timestamp),
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_trigger(player.get_id()),
                                      "send input on next frame")
 
     def handle_flag_drop(self):
         player = self.game_manager.main_player
-        timestamp = int(time.time() * 1000)
-        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_drop_trigger(player.get_id(), timestamp),
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_drop_trigger(player.get_id()),
                                      "send input on next frame")
 
     def player_flag_pickup(self, id):
@@ -116,8 +114,7 @@ class Game(ShowBase):
 
     def pick_bolt(self, entry):
         bolt_id = entry.getIntoNodePath().node().getName()[-1]
-        timestamp = int(time.time() * 1000)
-        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_bolt_pickup_trigger(bolt_id, timestamp),
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_bolt_pickup_trigger(bolt_id),
                                      "send input on next frame")
 
     def handle_input(self, input: Input):

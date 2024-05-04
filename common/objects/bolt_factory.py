@@ -21,7 +21,7 @@ class BoltFactory:
         random.shuffle(self.possible_positions)
 
     def spawn_bolts(self):
-        while len(self.current_bolts) <= MAP_SIZE//2:
+        while len(self.current_bolts) < MAP_SIZE//2:
             self.add_bolt()
 
     def remove_bolt(self, bolt_id):
