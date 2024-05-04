@@ -43,6 +43,8 @@ class Game(ShowBase):
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
         self.flag = Flag(self)
 
+        self.connection_manager.subscribe_for_game_end(self.game_manager.game_end_handler)
+
     def ready_handler(self, game_config: GameConfig):
         self.expected_players = game_config.expected_players
         self.game_manager.setup_map(self, game_config.tiles, game_config.size, game_config.season)

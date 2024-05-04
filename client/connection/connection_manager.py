@@ -1,5 +1,5 @@
 import time
-from typing import Callable
+from typing import Callable, Union
 import panda3d.core as p3d
 
 from direct.showbase.DirectObject import DirectObject
@@ -25,6 +25,7 @@ class ConnectionManager(DirectObject):
         self.ready_handler = lambda _: False
         self.game_state_change_subscriber = lambda _: False
         self.new_player_subscriber = lambda _: False
+        self.game_end_subscriber = lambda _: False
 
         # initialize UDP thread
         self.udp_connection = UDPConnectionThread(server_address[0], 0)
@@ -50,6 +51,9 @@ class ConnectionManager(DirectObject):
 
     def subscribe_for_new_player(self, subscriber: Callable[[PlayerStateDiff], None]):
         self.new_player_subscriber = subscriber
+
+    def subscribe_for_game_end(self, subscriber: Callable[[str], None]):
+        self.game_end_subscriber = subscriber
 
     def send_input_update(self, input: str):
         self.network_transfer_builder.add("type", Messages.UPDATE_INPUT)
@@ -98,5 +102,7 @@ class ConnectionManager(DirectObject):
                 self.client.player_flag_pickup(transfer.get("player"))
             elif type == Messages.PLAYER_DROPPED_FLAG:
                 self.client.player_flag_drop(transfer.get("player"))
+            elif type == Messages.GAME_END:
+                self.game_end_subscriber(str(transfer.get("id")))
 
         return task.cont
