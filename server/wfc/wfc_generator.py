@@ -83,6 +83,11 @@ class WFCGridGenerator:
             for tile in updated:
                 pq.put(tile)
 
+        for row in cells:
+            for cell in row:
+                if not cell.is_collapsed():
+                    return False
+
         return True
 
     def __fix_cells(self, cells: [WFCCell]) -> [WFCCell]:

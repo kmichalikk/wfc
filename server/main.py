@@ -107,17 +107,18 @@ class Server(ShowBase):
                 print("[INFO] Room requested")
                 self.__find_room_for(transfer.get_source())
             elif type == Messages.UPDATE_INPUT:
-                print("[INFO] Update input")
                 if transfer.get_source() in self.active_players:
+                    print("[INFO] Update input")
                     self.active_players[transfer.get_source()].update_input(transfer.get("input"))
             elif type == Messages.FIRE_GUN:
-                player = self.active_players[transfer.get_source()]
-                trigger_timestamp = transfer.get("timestamp")
-                self.shoot_bullet(
-                    p3d.Vec3(float(transfer.get('x')), float(transfer.get('y')), 0),
-                    player,
-                    trigger_timestamp
-                )
+                if transfer.get_source() in self.active_players:
+                    player = self.active_players[transfer.get_source()]
+                    trigger_timestamp = transfer.get("timestamp")
+                    self.shoot_bullet(
+                        p3d.Vec3(float(transfer.get('x')), float(transfer.get('y')), 0),
+                        player,
+                        trigger_timestamp
+                    )
             elif type == Messages.FLAG_PICKED:
                 print("[INFO] Flag requested by player " + transfer.get("player"))
                 self.handle_flag_pickup(transfer.get_source(), transfer.get("player"))
