@@ -109,5 +109,5 @@ if __name__ == "__main__":
     game = Game()
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
-    #PStatClient.connect()
+    # PStatClient.connect()
     game.run()

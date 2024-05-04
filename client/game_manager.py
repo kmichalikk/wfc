@@ -96,8 +96,8 @@ class GameManager:
 
         # add collider to main player controller
         player_collider = player.colliders[0]
+        player_collider.show()
         self.game.cTrav.addCollider(player_collider, self.game.pusher)
-        self.game.cTrav.addCollider(player_collider, self.game.collision_event_generator)
         self.game.pusher.addCollider(player_collider, player_collider)
 
         # add another controller for the player that doesn't directly respond to input
@@ -268,9 +268,14 @@ class GameManager:
         properties.set_size(800, 600)
         game.win.request_properties(properties)
 
-        point_light_node = game.render.attach_new_node(p3d.PointLight("light"))
-        point_light_node.set_pos(0, -10, 10)
-        game.render.set_light(point_light_node)
+        point_light = p3d.PointLight("light1")
+        point_light_node1 = game.render.attach_new_node(point_light)
+        point_light_node1.set_pos(0, 0, 20)
+        ambient = p3d.AmbientLight("light2")
+        ambient.set_color((0.02, 0.02, 0.02, 1))
+        point_light_node2 = game.render.attach_new_node(ambient)
+        game.render.set_light(point_light_node1)
+        game.render.set_light(point_light_node2)
 
         game.season = season
 
