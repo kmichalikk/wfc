@@ -78,6 +78,11 @@ class Game(ShowBase):
         self.accept("space-up", lambda: self.handle_bullet())
         self.accept("q", lambda: self.handle_flag_drop())
 
+    def detach_input(self):
+        keys = ["w", "w-up", "s", "s-up", "d", "d-up", "a", "a-up"]
+        for key in keys:
+            self.accept(key, lambda: self.handle_input("stop"))
+
     def handle_bullet(self):
         direction = self.game_manager.shoot_bullet()
         timestamp = int(time.time()*1000)
@@ -110,6 +115,9 @@ class Game(ShowBase):
 
     def pick_bolt(self, entry):
         bolt_id = entry.getIntoNodePath().node().getName()[-1]
+        player_id = entry.getFromNodePath().node().getName()[-1]
+        player = self.game_manager.players[player_id]
+        player.charge_energy()
         self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_bolt_pickup_trigger(bolt_id),
                                      "send input on next frame")
 

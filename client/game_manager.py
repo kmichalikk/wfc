@@ -127,7 +127,23 @@ class GameManager:
             self.update_main_player_position()
         self.interpolate_other_players_positions()
         self.update_bullets()
+        self.lose_energy()
+
         return task.cont
+
+    def lose_energy(self):
+        if self.main_player.get_energy() > 0:
+            self.main_player.lose_energy()
+
+            if self.main_player.get_energy() <= 0:
+                self.game.detach_input()
+                if self.main_player.has_flag():
+                    self.game.handle_flag_drop()
+                self.game.taskMgr.do_method_later(3, lambda _: self.resume_player(), "enable movement")
+
+    def resume_player(self):
+        self.main_player.charge_energy()
+        self.game.attach_input()
 
     def update_bullets(self):
         for bullet in self.bullets:
