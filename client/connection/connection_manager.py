@@ -68,23 +68,20 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
-    def send_flag_trigger(self, player, timestamp: int):
+    def send_flag_trigger(self, player):
         self.network_transfer_builder.add("type", Messages.FLAG_PICKED)
-        self.network_transfer_builder.add("timestamp", timestamp)
         self.network_transfer_builder.add("player", player)
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
-    def send_flag_drop_trigger(self, player, timestamp: int):
+    def send_flag_drop_trigger(self, player):
         self.network_transfer_builder.add("type", Messages.FLAG_DROPPED)
-        self.network_transfer_builder.add("timestamp", timestamp)
         self.network_transfer_builder.add("player", player)
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
-    def send_bolt_pickup_trigger(self, bolt_id: str, timestamp: int):
+    def send_bolt_pickup_trigger(self, bolt_id: str):
         self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_BOLT)
-        self.network_transfer_builder.add("timestamp", timestamp)
         self.network_transfer_builder.add("bolt_id", bolt_id)
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
