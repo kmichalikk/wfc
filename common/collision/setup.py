@@ -21,7 +21,7 @@ def setup_collisions(game, tiles, map_size, bullet_factory):
 
     game.safe_spaces = []
     for i in range(4):
-        game.safe_spaces.append(SafeSpace(game.render, i, map_size))
+        game.safe_spaces.append(SafeSpace(game.render, i, map_size, game.loader))
 
     tiles_parent = NodePath("tiles")
     tile: p3d.NodePath
@@ -38,6 +38,3 @@ def setup_collisions(game, tiles, map_size, bullet_factory):
 
     tiles_parent.flatten_strong()
     tiles_parent.reparent_to(game.render)
-
-    for space in game.safe_spaces:
-        space.show()

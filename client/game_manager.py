@@ -261,6 +261,12 @@ class GameManager:
             self.server_game_state_transfer_deque.popleft()
         self.tick_update = True
 
+    def game_end_handler(self, winner_id):
+        if self.main_player.get_id() == winner_id:
+            print("player has won the game")
+        else:
+            print("game over")
+
     def setup_map(self, game, tiles, map_size, season):
         game.disableMouse()
 

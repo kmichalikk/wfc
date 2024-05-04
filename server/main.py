@@ -2,6 +2,7 @@ import random
 import sys
 import time
 from collections import deque
+from typing import Union
 
 import panda3d.core as p3d
 import simplepbr
@@ -55,6 +56,7 @@ class Server(ShowBase):
         self.projectiles_to_process: list[Bullet] = []
         self.bullets: list[Bullet] = []
         self.flag = Flag(self)
+        self.game_won_by: Union[None, PlayerController] = None
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
@@ -70,6 +72,9 @@ class Server(ShowBase):
         print(f"[INFO] Listening on port {self.port}")
 
     def handle_clients(self, task):
+        if self.game_won_by is not None:
+            return
+
         for transfer in self.udp_connection.get_queued_transfers():
             type = transfer.get("type")
             if type == Messages.HELLO:
@@ -90,15 +95,18 @@ class Server(ShowBase):
                     trigger_timestamp
                 )
             elif type == Messages.FLAG_PICKED:
-                print("[INFO] Flag requested by player "+transfer.get("player"))
+                print("[INFO] Flag requested by player " + transfer.get("player"))
                 self.handle_flag_pickup(transfer.get_source(), transfer.get("player"))
             elif type == Messages.FLAG_DROPPED:
-                print("[INFO] Flag drop requested by player "+transfer.get("player"))
+                print("[INFO] Flag drop requested by player " + transfer.get("player"))
                 self.handle_flag_drop(transfer.get_source(), transfer.get("player"))
 
         return task.cont
 
     def update_bullets(self, task):
+        if self.game_won_by is not None:
+            return
+
         for bullet in self.bullets:
             bullet.update_position()
         projectiles = self.projectiles_to_process
@@ -186,7 +194,7 @@ class Server(ShowBase):
             new_player_controller.get_state()
         )
 
-    def handle_flag_pickup(self, player_address,  player):
+    def handle_flag_pickup(self, player_address, player):
         if not self.flag.taken():
             print("[INFO] Flag picked by player " + player)
             addresses = self.active_players.keys()
@@ -198,7 +206,7 @@ class Server(ShowBase):
                 self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
             self.player_flag_pickup(player_address)
 
-    def handle_flag_drop(self, player_address,  player):
+    def handle_flag_drop(self, player_address, player):
         if self.flag.taken() and player == self.flag.player.get_id():
             print("[INFO] Flag dropped by player " + player)
             addresses = self.active_players.keys()
@@ -211,6 +219,9 @@ class Server(ShowBase):
             self.player_flag_drop(player_address)
 
     def handle_game_state(self, task):
+        if self.game_won_by is not None:
+            return
+
         # prepare current snapshot of game state
         game_state = GameStateDiff(TimeStep(begin=0, end=time.time()))
         game_state.player_state \
@@ -279,6 +290,10 @@ class Server(ShowBase):
 
         taskMgr.add(new_player_controller.task_update_position, "update player position")
         self.accept(f"bullet-into-player{id}", self.handle_bullet_hit)
+        self.accept(
+            f"player{id}-into-safe_space{id}",
+            self.__add_player_into_safe_space_handler(new_player_controller)
+        )
 
         return new_player_controller
 
@@ -315,6 +330,29 @@ class Server(ShowBase):
             if player_controller.get_id() == player_id:
                 return address
         return None
+
+    def __add_player_into_safe_space_handler(self, player_controller: PlayerController):
+        def handler(entry):
+            if player_controller.has_flag():
+                print(f"[INFO] player{player_controller.get_id()} has won the game")
+                self.game_won_by = player_controller
+                self.__finish_game()
+
+        return handler
+
+    def __finish_game(self):
+        print("[INFO] Broadcasting game end")
+        self.network_transfer_builder.add("type", Messages.GAME_END)
+        self.network_transfer_builder.add("id", self.game_won_by.get_id())
+        address: Address
+        for address in self.active_players.keys():
+            # resend the same transfer to all players, change only destination
+            self.network_transfer_builder.set_destination(address)
+            self.udp_connection.enqueue_transfer(
+                self.network_transfer_builder.encode(reset=False)
+            )
+        # reset=False left previous builder state, clean it up after pinging every player
+        self.network_transfer_builder.cleanup()
 
 
 if __name__ == "__main__":
