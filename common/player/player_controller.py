@@ -91,7 +91,3 @@ class PlayerController(CollisionObject):
     def update_time_step(self):
         self.state.step = TimeStep(self.state.step.begin, time.time())
         self.state.motion_state.step = TimeStep(self.state.motion_state.step.begin, time.time())
-
-    def into_safe_space(self, entry):
-        if entry.getFromNodePath().getName()[-1] == entry.getIntoNodePath().getName()[-1] and self.has_flag:
-            print("Player " + self.get_id() + " has won the game!")

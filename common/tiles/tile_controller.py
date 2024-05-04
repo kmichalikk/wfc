@@ -1,3 +1,5 @@
+from copy import copy
+
 import panda3d.core as p3d
 from panda3d.core import CollisionBox, Point3, CollisionSphere, CollisionCapsule
 
@@ -11,6 +13,10 @@ def create_new_tile(loader: p3d.Loader, name: str, position: tuple, heading: int
     node_path.set_h(heading)
 
     return node_path
+
+
+def get_collision_shapes(key: str):
+    return [copy(shape) for shape in collision_shapes[key]]
 
 
 collision_shapes = {
@@ -45,6 +51,11 @@ collision_shapes = {
 
     "empty_1": []
 }
+
+
+def get_water_borders(key: str):
+    return [copy(border) for border in water_borders[key]]
+
 
 water_borders = {
     "water_concave_1": [CollisionBox(Point3(-0.65, 0.65, 0.5), 0.35, 0.35, 0.5)],

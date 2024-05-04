@@ -27,6 +27,7 @@ class Messages(IntEnum):
     PLAYER_DROPPED_FLAG = auto()
     PLAYER_PICKED_FLAG = auto()
     PLAYER_TELEPORTED = auto()
+    GAME_END = auto()
 
 
 class TimeStep(NamedTuple):
