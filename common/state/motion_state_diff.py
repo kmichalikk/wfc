@@ -5,25 +5,23 @@ from common.typings import SupportsDiff, SupportsNetworkTransfer, TimeStep, Supp
 
 
 class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
-    def __init__(self, step: TimeStep, position, velocity, acceleration, player_id):
+    def __init__(self, step: TimeStep, position, velocity, player_id):
         self.player_id = player_id
         self.step = step
         self.position: Vec3 = position
         self.velocity: Vec3 = velocity
+        self.target_velocity = 8
         self.direction: Vec3 = Vec3(0, 1, 0) if self.velocity.length() < 0.01 else self.velocity.normalized()
-        self.acceleration: Vec3 = acceleration
         self.angle: float = 0
 
+        self.active_inputs_raw: Vec3 = Vec3(0, 0, 0)
         self.active_inputs: Vec3 = Vec3(0, 0, 0)
-        self.acceleration_rate = 0.5
-        self.damping = 0.01
+        self.change_rate = 4
 
     def apply(self, other: 'MotionStateDiff'):
         self.step = TimeStep(begin=self.step.begin, end=other.step.end)
         self.position += other.position
         self.velocity += other.velocity
-        self.acceleration += other.acceleration
-        self.angle += other.angle
 
     def diff(self, other: 'MotionStateDiff') -> 'MotionStateDiff':
         if other.step.end < self.step.end:
@@ -34,10 +32,8 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
             TimeStep(self.step.end, other.step.end),
             other.position - self.position,
             other.velocity - self.velocity,
-            other.acceleration - self.acceleration,
             self.player_id
         )
-        diff_state.angle = other.angle - self.angle
 
         return diff_state
 
@@ -45,8 +41,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         lerp_state = MotionStateDiff(
             self.step,
             (other.position - self.position) * t,
-            Vec3(0, 0, 0),
-            Vec3(0, 0, 0),
+            (other.velocity - self.velocity) * t,
             self.player_id
         )
         lerp_state.angle = (other.angle - self.angle) * t
@@ -62,9 +57,6 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         builder.add(f"m{self.player_id}py", str(self.position.get_y()))
         builder.add(f"m{self.player_id}vx", str(self.velocity.get_x()))
         builder.add(f"m{self.player_id}vy", str(self.velocity.get_y()))
-        builder.add(f"m{self.player_id}ax", str(self.acceleration.get_x()))
-        builder.add(f"m{self.player_id}ay", str(self.acceleration.get_y()))
-        builder.add(f"m{self.player_id}ang", str(self.angle))
 
     def restore(self, transfer):
         step = transfer.get(f"p{self.player_id}step").split(" ")
@@ -73,17 +65,22 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.position.set_y(float(transfer.get(f"m{self.player_id}py")))
         self.velocity.set_x(float(transfer.get(f"m{self.player_id}vx")))
         self.velocity.set_y(float(transfer.get(f"m{self.player_id}vy")))
-        self.acceleration.set_x(float(transfer.get(f"m{self.player_id}ax")))
-        self.acceleration.set_y(float(transfer.get(f"m{self.player_id}ay")))
-        self.angle = float(transfer.get(f"m{self.player_id}ang"))
 
     def update(self):
         """ updates motion, makes sense only for full diffs (step.begin == 0) """
         dt = globalClock.get_dt()
-        self.velocity.set_x((self.velocity.get_x() + self.acceleration.get_x() * dt) * self.damping ** dt)
-        self.velocity.set_y((self.velocity.get_y() + self.acceleration.get_y() * dt) * self.damping ** dt)
-        self.position.set_x(self.position.get_x() + self.velocity.get_x() * self.damping ** dt)
-        self.position.set_y(self.position.get_y() + self.velocity.get_y() * self.damping ** dt)
+        self.velocity.set_x(
+            self.velocity.get_x() * (1 - dt * self.change_rate)
+            + self.active_inputs.get_x() * self.target_velocity * dt * self.change_rate
+        )
+        self.velocity.set_y(
+            self.velocity.get_y() * (1 - dt * self.change_rate)
+            + self.active_inputs.get_y() * self.target_velocity * dt * self.change_rate
+        )
+        self.position.set_x(self.position.get_x() + self.velocity.get_x() * dt)
+        self.position.set_y(self.position.get_y() + self.velocity.get_y() * dt)
+
+    def update_angle(self):
         if self.velocity.length() > 0.01:
             self.direction = self.velocity.normalized()
             self.angle = -self.direction.signed_angle_deg(Vec3(0, 1, 0), Vec3(0, 0, 1))
@@ -106,30 +103,28 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
                 end=new_end
             ),
             self.position * t,
-            self.velocity * (1 - (1-t)**2),
-            self.acceleration,
+            self.velocity * t,
             self.player_id
         )
 
     def update_input(self, input: Input):
         match input:
-            case "+forward": self.active_inputs.add_y(1)
-            case "-forward": self.active_inputs.add_y(-1)
-            case "+backward": self.active_inputs.add_y(-1)
-            case "-backward": self.active_inputs.add_y(1)
-            case "+right": self.active_inputs.add_x(1)
-            case "-right": self.active_inputs.add_x(-1)
-            case "+left": self.active_inputs.add_x(-1)
-            case "-left": self.active_inputs.add_x(1)
-        normalized_inputs = self.active_inputs.normalized()
-        self.acceleration.set_x(normalized_inputs.get_x() * self.acceleration_rate)
-        self.acceleration.set_y(normalized_inputs.get_y() * self.acceleration_rate)
+            case "+forward": self.active_inputs_raw.add_y(1)
+            case "-forward": self.active_inputs_raw.add_y(-1)
+            case "+backward": self.active_inputs_raw.add_y(-1)
+            case "-backward": self.active_inputs_raw.add_y(1)
+            case "+right": self.active_inputs_raw.add_x(1)
+            case "-right": self.active_inputs_raw.add_x(-1)
+            case "+left": self.active_inputs_raw.add_x(-1)
+            case "-left": self.active_inputs_raw.add_x(1)
+        normalized_inputs = self.active_inputs_raw.normalized()
+        self.active_inputs.set_x(normalized_inputs.get_x())
+        self.active_inputs.set_y(normalized_inputs.get_y())
 
     @classmethod
     def empty(cls, player_id: str):
         return cls(
             TimeStep(begin=0, end=0),
-            Vec3(0, 0, 0),
             Vec3(0, 0, 0),
             Vec3(0, 0, 0),
             player_id
@@ -140,7 +135,6 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
             self.step,
             Vec3(self.position),
             Vec3(self.velocity),
-            Vec3(self.acceleration),
             self.player_id
         )
         cloned.angle = self.angle

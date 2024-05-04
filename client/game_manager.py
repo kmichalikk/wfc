@@ -1,10 +1,10 @@
 import time
 from collections import deque
-from queue import Queue
 
 import panda3d.core as p3d
 
 from typing import Union
+
 from direct.showbase import ShowBase
 from direct.task import Task
 
@@ -15,6 +15,7 @@ from common.collision.setup import setup_collisions
 from common.config import TIME_STEP
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
+from common.objects.cloud_factory import CloudFactory
 from common.state.game_state_diff import GameStateDiff
 from common.state.player_state_diff import PlayerStateDiff
 from common.tiles.tile_controller import create_new_tile
@@ -48,6 +49,7 @@ class GameManager:
 
         # flag to set if new server game state is expected to be processed on next frame
         self.tick_update = False
+        self.lerp_factor = 0.2
 
         # delay for other player state update
         # it allows for interpolation between previous server states
@@ -68,9 +70,11 @@ class GameManager:
         player_node_path.reparent_to(self.game.render)
         player = PlayerController(
             player_node_path,
-            player_state
+            player_state,
         )
         player.sync_position()
+        player.set_cloud_factory(CloudFactory(self.game.loader, self.game.render))
+        self.game.taskMgr.do_method_later(0.05, player.task_emit_cloud, 'emit cloud')
 
         self.game_state.player_state[player_state.id] = player_state
         self.players[player_state.id] = player
@@ -179,7 +183,7 @@ class GameManager:
                 self.main_player_server_view.sync_position()
                 self.main_player.update_position()
                 lerp = self.main_player.state.motion_state \
-                    .lerp(0.3, self.main_player_server_view.state.motion_state)
+                    .lerp(self.lerp_factor, self.main_player_server_view.state.motion_state)
                 self.main_player.state.motion_state.apply(lerp)
                 self.main_player.sync_position()
 
@@ -195,7 +199,7 @@ class GameManager:
         self.main_player_server_view.state.apply(diff)
         self.main_player_server_view.sync_position()
         lerp = self.main_player.state.motion_state \
-            .lerp(0.3, self.main_player_server_view.state.motion_state)
+            .lerp(self.lerp_factor, self.main_player_server_view.state.motion_state)
         self.main_player.state.motion_state.apply(lerp)
         self.main_player.sync_position()
 
@@ -261,7 +265,7 @@ class GameManager:
         game.disableMouse()
 
         properties = p3d.WindowProperties()
-        properties.set_size(1280, 800)
+        properties.set_size(800, 600)
         game.win.request_properties(properties)
 
         point_light_node = game.render.attach_new_node(p3d.PointLight("light"))
@@ -287,4 +291,3 @@ class GameManager:
 
         if self.active_players < self.game.expected_players:
             self.waiting_screen.display()
-
