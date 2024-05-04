@@ -8,8 +8,8 @@ from typing import Union
 from direct.showbase import ShowBase
 from direct.task import Task
 
-
 from client.connection.waiting_screen import WaitingScreen
+from client.screens.player_stats import PlayerStats
 
 from common.collision.setup import setup_collisions
 from common.config import TIME_STEP
@@ -113,6 +113,11 @@ class GameManager:
             ghost=True  # todo: implement "don't show" better; see inside PlayerController
         )
         self.main_player_server_view.sync_position()
+
+        # show UI
+        player_stats = PlayerStats(self.game.loader, player.get_id())
+        player_stats.display()
+        player_stats.set_energy(0.5)
 
     def sync_game_state(self, task):
         if self.tick_update:
