@@ -60,7 +60,31 @@ class Server(ShowBase):
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
+            simplepbr.init()
             self.__setup_view()
+
+    def reset_server(self):
+        print("[INFO] Resetting server...")
+        print("  --   Removing players")
+        self.active_players = {}
+        self.next_player_id = 0
+        print("  --   Clearing game state history")
+        self.game_state_history = deque()
+        self.last_game_state_timestamp = 0
+        self.frames_processed = 0
+        self.flag = Flag(self)
+        print("  --   Clearing scene")
+        self.render.get_children().detach()
+        print("  --   Generating new map")
+        self.season = random.choices([0, 1], weights=[5, 5], k=1)[0]
+        self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
+        print("  --   Starting")
+        self.__setup_collisions()
+        self.game_won_by = None
+        if self.view:
+            self.camera.reparent_to(self.render)
+            self.__setup_view()
+        print("  --   Done. Server ready")
 
     def listen(self):
         self.udp_connection.start()
@@ -302,7 +326,6 @@ class Server(ShowBase):
 
     # to be called after __setup_collisions()
     def __setup_view(self):
-        simplepbr.init()
         self.disableMouse()
 
         properties = p3d.WindowProperties()
@@ -353,6 +376,8 @@ class Server(ShowBase):
             )
         # reset=False left previous builder state, clean it up after pinging every player
         self.network_transfer_builder.cleanup()
+        time.sleep(1)
+        self.reset_server()
 
 
 if __name__ == "__main__":

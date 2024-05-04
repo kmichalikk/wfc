@@ -16,7 +16,7 @@ class WFCGridGenerator:
     def generate(self, size: int, players_count: int) -> [[WFCCell]]:
         possible_positions = [(2, 2), (2, size - 3), (size - 3, 2), (size - 3, size - 3)]
         while not self.__generate(size, possible_positions[:players_count]):
-            print("contradiction, trying again")
+            print("  --   [WFC] contradiction, trying again")
             continue
 
         return self.grid

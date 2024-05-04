@@ -3,7 +3,7 @@ from panda3d.core import NodePath
 
 from common.collision.collision_object import CollisionObject
 from common.collision.safe_space import SafeSpace
-from common.tiles.tile_controller import create_new_tile, collision_shapes
+from common.tiles.tile_controller import create_new_tile, collision_shapes, get_collision_shapes
 
 
 def setup_collisions(game, tiles, map_size, bullet_factory):
@@ -32,7 +32,7 @@ def setup_collisions(game, tiles, map_size, bullet_factory):
             CollisionObject(
                 tile,
                 "wall" if "wall" in tile_data["node_path"] else tile_data["node_path"],
-                collision_shapes[tile_data["node_path"]]
+                get_collision_shapes(tile_data["node_path"])
             )
         )
 
