@@ -17,6 +17,7 @@ from common.collision.setup import setup_collisions
 from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
+from common.objects.bolt_factory import BoltFactory
 from common.objects.flag import Flag
 from common.player.player_controller import PlayerController
 from common.state.game_config import GameConfig
@@ -55,6 +56,8 @@ class Server(ShowBase):
         print("[INFO] Starting WFC map generation")
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.bullet_factory = BulletFactory(self.render)
+        self.bolt_factory = BoltFactory(self.loader, self.render)
+        self.bolt_factory.spawn_bolts()
         self.projectiles_to_process: list[Bullet] = []
         self.bullets: list[Bullet] = []
         self.flag = Flag(self)
@@ -127,7 +130,8 @@ class Server(ShowBase):
             elif type == Messages.FLAG_DROPPED:
                 print("[INFO] Flag drop requested by player " + transfer.get("player"))
                 self.handle_flag_drop(transfer.get_source(), transfer.get("player"))
-
+            elif type == Messages.PLAYER_PICKED_BOLT:
+                self.update_bolts(transfer.get("bolt_id"))
         return task.cont
 
     def update_bullets(self, task):
@@ -235,6 +239,7 @@ class Server(ShowBase):
             )
             self.update_flag_state(address)
             self.log_in(username)
+            self.setup_bolts(address)
         else:
             self.network_transfer_builder.set_destination(address)
             self.network_transfer_builder.add("type", Messages.FIND_ROOM_FAIL)
@@ -414,14 +419,31 @@ class Server(ShowBase):
 
             self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
+    def update_bolts(self, bolt_id):
+        self.bolt_factory.remove_bolt(bolt_id)
+        new_bolt = self.bolt_factory.add_bolt()
+
+        for address, player_controller in self.active_players.items():
+            self.network_transfer_builder.set_destination(address)
+            self.network_transfer_builder.add("type", Messages.BOLTS_UPDATE)
+            self.network_transfer_builder.add("old_bolt", bolt_id)
+            self.network_transfer_builder.add("new_bolt", new_bolt)
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+    def setup_bolts(self, address):
+        self.network_transfer_builder.set_destination(address)
+        self.network_transfer_builder.add("type", Messages.BOLTS_SETUP)
+        self.network_transfer_builder.add("current_bolts", self.bolt_factory.current_bolts)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Użycie: python -m server.main <liczba graczy>")
         sys.exit(1)
     expected_players = int(sys.argv[1])
-    # server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
-    server = Server(SERVER_PORT, expected_players)
+    server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
+    #server = Server(SERVER_PORT, expected_players)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()

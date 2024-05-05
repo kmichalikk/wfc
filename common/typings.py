@@ -27,6 +27,9 @@ class Messages(IntEnum):
     PLAYER_DROPPED_FLAG = auto()
     PLAYER_PICKED_FLAG = auto()
     PLAYER_TELEPORTED = auto()
+    PLAYER_PICKED_BOLT = auto()
+    BOLTS_UPDATE = auto()
+    BOLTS_SETUP = auto()
     GAME_END = auto()
 
 
