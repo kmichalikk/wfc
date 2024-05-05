@@ -11,7 +11,7 @@ from common.typings import Input, TimeStep
 
 
 class PlayerController(CollisionObject):
-    COLLISION_RADIUS = 0.25
+    COLLISION_RADIUS = 0.3
 
     def __init__(self, model: p3d.NodePath, player_state: PlayerStateDiff, ghost=False):
         if ghost:

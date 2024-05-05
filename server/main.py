@@ -55,6 +55,7 @@ class Server(ShowBase):
         self.bullet_factory = BulletFactory(self.render)
         self.projectiles_to_process: list[Bullet] = []
         self.bullets: list[Bullet] = []
+        self.bullets_since_last_update: list[Bullet] = []
         self.flag = Flag(self)
         self.game_won_by: Union[None, PlayerController] = None
         self.__setup_collisions()
@@ -139,6 +140,7 @@ class Server(ShowBase):
         for b in projectiles:
             self.__update_position_compensate_time(b)
             self.bullets.append(b)
+            self.bullets_since_last_update.append(b)
         return task.cont
 
     def shoot_bullet(self, direction, player, timestamp) -> p3d.Vec3:
@@ -280,15 +282,29 @@ class Server(ShowBase):
     def __broadcast_game_state(self, game_state):
         self.network_transfer_builder.add("type", Messages.GLOBAL_STATE)
         game_state.transfer(self.network_transfer_builder)
+
+        all_bullets = self.bullets_since_last_update
+        self.bullets_since_last_update = []
+
         address: Address
         for address in self.active_players.keys():
-            # resend the same transfer to all players, change only destination
+            self.network_transfer_builder.add(
+                "bullets",
+                self.__get_other_players_bullets_metadata(all_bullets, self.active_players[address].get_id())
+            )
             self.network_transfer_builder.set_destination(address)
             self.udp_connection.enqueue_transfer(
                 self.network_transfer_builder.encode(reset=False)
             )
         # reset=False left previous builder state, clean it up after pinging every player
         self.network_transfer_builder.cleanup()
+
+    def __get_other_players_bullets_metadata(self, all_bullets: list[Bullet], player_id: str):
+        bullets = [b for b in all_bullets if b.owner_id != player_id]
+        new_bullets_metadata = ""
+        for b in bullets:
+            new_bullets_metadata += f"{" ".join([str(md) for md in b.get_metadata()])},"
+        return new_bullets_metadata[:-1]
 
     def broadcast_player_disconnected(self, task):
         # todo: client is active as long as it sends KEEP_ALIVE from time to time

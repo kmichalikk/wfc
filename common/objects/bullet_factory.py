@@ -2,6 +2,7 @@ import time
 import panda3d.core as p3d
 
 from common.objects.bullet import Bullet
+from common.typings import BulletMetadata
 
 
 class BulletFactory:
@@ -31,6 +32,13 @@ class BulletFactory:
         bullet.direction = direction
         bullet.owner_id = owner_id
         return bullet
+
+    def get_one_from_metadata(self, metadata: BulletMetadata):
+        return self.get_one(
+            p3d.Vec3(metadata[0], metadata[1], 0.5),
+            p3d.Vec3(metadata[2], metadata[3], 0),
+            ""
+        )
 
     def destroy(self, bullet_id):
         self.bullets[bullet_id].position = p3d.Vec3(-10, bullet_id, 0)

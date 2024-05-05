@@ -1,3 +1,4 @@
+from common.objects.bullet import Bullet
 from common.state.player_state_diff import PlayerStateDiff
 from common.typings import SupportsDiff, SupportsNetworkTransfer, TimeStep, SupportsBuildingNetworkTransfer
 
