@@ -65,7 +65,6 @@ class Server(ShowBase):
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
-            simplepbr.init()
             self.__setup_view()
 
     def reset_server(self):
