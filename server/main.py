@@ -197,26 +197,38 @@ class Server(ShowBase):
         pass
 
     def __find_room_for(self, address):
-        new_player_controller = self.__add_new_player(address, str(self.next_player_id))
-        self.network_transfer_builder.add("id", str(self.next_player_id))
-        self.next_player_id += 1
+        new_player = True
+        if address in self.active_players.keys():
+            new_player = False
+            player_controller = self.active_players[address]
+            print(f"  --   Resending to player {player_controller.get_id()}")
+            self.network_transfer_builder.add("id", player_controller.get_id())
+        else:
+            print("  --   Adding new player")
+            player_controller = self.__add_new_player(address, str(self.next_player_id))
+            self.network_transfer_builder.add("id", str(self.next_player_id))
+            self.next_player_id += 1
         self.network_transfer_builder.set_destination(address)
         self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
         game_config = GameConfig(
             self.tiles,
             self.expected_players,
-            new_player_controller.get_id(),
+            player_controller.get_id(),
             [player.get_state() for player in self.active_players.values()],
             MAP_SIZE,
             self.season
         )
         # fill game_config
         game_config.transfer(self.network_transfer_builder)
-        # respond with data and notify other players
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+        if not new_player:
+            return
+
+        # respond with data and notify other players
         self.broadcast_new_player(
-            new_player_controller.get_id(),
-            new_player_controller.get_state()
+            player_controller.get_id(),
+            player_controller.get_state()
         )
 
     def handle_flag_pickup(self, player_address, player):
@@ -365,19 +377,20 @@ class Server(ShowBase):
         return handler
 
     def __finish_game(self):
-        print("[INFO] Broadcasting game end")
-        self.network_transfer_builder.add("type", Messages.GAME_END)
-        self.network_transfer_builder.add("id", self.game_won_by.get_id())
-        address: Address
-        for address in self.active_players.keys():
-            # resend the same transfer to all players, change only destination
-            self.network_transfer_builder.set_destination(address)
-            self.udp_connection.enqueue_transfer(
-                self.network_transfer_builder.encode(reset=False)
-            )
-        # reset=False left previous builder state, clean it up after pinging every player
-        self.network_transfer_builder.cleanup()
-        time.sleep(1)
+        for i in range(5):
+            print(f"[INFO] Broadcasting game end {i+1}th time")
+            self.network_transfer_builder.add("type", Messages.GAME_END)
+            self.network_transfer_builder.add("id", self.game_won_by.get_id())
+            address: Address
+            for address in self.active_players.keys():
+                # resend the same transfer to all players, change only destination
+                self.network_transfer_builder.set_destination(address)
+                self.udp_connection.enqueue_transfer(
+                    self.network_transfer_builder.encode(reset=False)
+                )
+            # reset=False left previous builder state, clean it up after pinging every player
+            self.network_transfer_builder.cleanup()
+        time.sleep(0.5)
         self.reset_server()
 
 
