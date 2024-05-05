@@ -36,15 +36,24 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
+        self.room_found = False
+
         # begin processing of incoming messages
         taskMgr.add(self.process_messages, "process incoming transfers")
 
     def wait_for_connection(self, ready_handler: Callable[[GameConfig], None]):
         """ Add listener for server sending room information, send a room request """
         self.ready_handler = ready_handler
-        self.network_transfer_builder.set_destination(self.server_address)
-        self.network_transfer_builder.add("type", Messages.FIND_ROOM)
-        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+        def wait(task):
+            if self.room_found:
+                return
+
+            self.network_transfer_builder.set_destination(self.server_address)
+            self.network_transfer_builder.add("type", Messages.FIND_ROOM)
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+            taskMgr.do_method_later(2, wait, 'wait for room')
+        wait(None)
 
     def subscribe_for_game_state_change(self, subscriber: Callable[[NetworkTransfer], None]):
         self.game_state_change_subscriber = subscriber
@@ -92,17 +101,22 @@ class ConnectionManager(DirectObject):
                 game_config = GameConfig.empty()
                 game_config.restore(transfer)
                 self.ready_handler(game_config)
+                self.room_found = True
             elif type == Messages.GLOBAL_STATE:
                 self.game_state_change_subscriber(transfer)
             elif type == Messages.NEW_PLAYER:
+                print("[INFO] New player")
                 player_state = PlayerStateDiff.empty(transfer.get("id"))
                 player_state.restore(transfer)
                 self.new_player_subscriber(player_state)
             elif type == Messages.PLAYER_PICKED_FLAG:
+                print("[INFO] Flag picked")
                 self.client.player_flag_pickup(transfer.get("player"))
             elif type == Messages.PLAYER_DROPPED_FLAG:
+                print("[INFO] Flag dropped")
                 self.client.player_flag_drop(transfer.get("player"))
             elif type == Messages.GAME_END:
+                print("[INFO] Game end")
                 self.game_end_subscriber(str(transfer.get("id")))
 
         return task.cont

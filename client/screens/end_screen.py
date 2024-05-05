@@ -6,8 +6,13 @@ class EndScreen:
     def __init__(self, loader):
         self.textNodePath = None
         self.font = loader.loadFont("../common/assets/Font.ttf")
+        self.displayed = False
 
     def display(self, winning: bool, winner_id: int):
+        if self.displayed:
+            return
+
+        self.displayed = True
         heading = p3d.TextNode('heading')
         heading.set_text("Koniec gry" if not winning else "Wygrana!")
         heading.set_font(self.font)

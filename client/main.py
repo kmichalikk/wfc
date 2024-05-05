@@ -37,7 +37,6 @@ class Game(ShowBase):
         # initialize ConnectionManager and subscribe to all event it handles
         self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT), self)
         self.connection_manager.wait_for_connection(self.ready_handler)
-        self.connection_manager.subscribe_for_new_player(self.new_player_handler)
 
         # initialize GameManager, don't start the game until self.ready
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
@@ -54,6 +53,7 @@ class Game(ShowBase):
                 self.game_manager.set_main_player(player)
 
         # now the game is ready to start, so we start listening for server changes
+        self.connection_manager.subscribe_for_new_player(self.new_player_handler)
         self.connection_manager.subscribe_for_game_state_change(self.game_state_change)
 
     def game_state_change(self, game_state_transfer: NetworkTransfer):

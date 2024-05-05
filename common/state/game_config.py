@@ -1,4 +1,5 @@
 import pickle
+import zlib
 
 from common.state.player_state_diff import PlayerStateDiff
 from common.typings import SupportsNetworkTransfer, SupportsBuildingNetworkTransfer
@@ -15,7 +16,7 @@ class GameConfig(SupportsNetworkTransfer):
         self.season = season
 
     def transfer(self, builder: SupportsBuildingNetworkTransfer):
-        builder.add("gctiles", pickle.dumps(self.tiles).hex())
+        builder.add("gctiles", zlib.compress(pickle.dumps(self.tiles)).hex())
         builder.add("id", self.id)
         builder.add("size", self.size)
         builder.add("expected_players", self.expected_players)
@@ -25,7 +26,7 @@ class GameConfig(SupportsNetworkTransfer):
             state.transfer(builder)
 
     def restore(self, transfer):
-        self.tiles = pickle.loads(bytes.fromhex(transfer.get("gctiles")))
+        self.tiles = pickle.loads(zlib.decompress(bytes.fromhex(transfer.get("gctiles"))))
         self.all_ids = transfer.get("ids").split(",")
         self.id = transfer.get("id")
         self.size = transfer.get("size")

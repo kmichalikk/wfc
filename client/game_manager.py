@@ -9,7 +9,6 @@ from direct.showbase import ShowBase
 from direct.task import Task
 
 
-from client.connection.waiting_screen import WaitingScreen
 from client.screens.player_stats import PlayerStats
 
 from client.screens.end_screen import EndScreen
@@ -266,6 +265,9 @@ class GameManager:
     def queue_server_game_state(self, transfer: NetworkTransfer):
         server_game_state = GameStateDiff.empty(self.game_state.player_state.keys())
         server_game_state.restore(transfer)
+        for id, player_state in server_game_state.player_state.items():
+            if id not in self.players:
+                self.setup_player(player_state)
         self.server_game_state_transfer_deque.append(server_game_state)
         while len(self.server_game_state_transfer_deque) > 5:
             self.server_game_state_transfer_deque.popleft()
