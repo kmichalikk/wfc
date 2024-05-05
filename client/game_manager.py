@@ -278,6 +278,7 @@ class GameManager:
 
     def setup_map(self, game, tiles, map_size, season):
         game.disableMouse()
+        game.login_screen.hide()
 
         properties = p3d.WindowProperties()
         properties.set_size(800, 600)

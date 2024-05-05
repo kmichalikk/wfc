@@ -320,7 +320,7 @@ class Server(ShowBase):
         self.network_transfer_builder.cleanup()
 
     def __add_new_player(self, address: Address, id: str, username: str) -> PlayerController:
-        new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id)
+        new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id, username)
         new_player_state.set_position((self.player_positions[int(new_player_state.id)]))
         model = self.node_path_factory.get_player_model(new_player_state.id)
         model.reparent_to(self.render)

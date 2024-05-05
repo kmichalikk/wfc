@@ -8,6 +8,7 @@ from panda3d.core import ClockObject, PStatClient, load_prc_file_data
 
 from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
+from client.connection.login_screen import LoginScreen
 
 from common.config import FRAMERATE, SERVER_ADDRESS, SERVER_PORT
 from common.objects.flag import Flag
@@ -36,13 +37,16 @@ class Game(ShowBase):
 
         # initialize ConnectionManager and subscribe to all event it handles
         self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT), self)
-        self.connection_manager.wait_for_connection(self.ready_handler)
+        self.login_screen = LoginScreen(self.loader, self.start)
 
         # initialize GameManager, don't start the game until self.ready
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
         self.flag = Flag(self)
 
-        self.connection_manager.subscribe_for_game_end(self.game_manager.game_end_handler)
+    def start(self, username):
+        self.connection_manager.wait_for_connection(self.ready_handler, username)
+        self.connection_manager.subscribe_for_new_player(self.new_player_handler)
+        self.network_transfer_builder.add("username", username)
 
     def ready_handler(self, game_config: GameConfig):
         self.expected_players = game_config.expected_players
@@ -60,7 +64,7 @@ class Game(ShowBase):
         self.game_manager.queue_server_game_state(game_state_transfer)
 
     def new_player_handler(self, player_state: PlayerStateDiff):
-        print("[INFO] New player with id={}".format(player_state.id))
+        print("[INFO] New player {}".format(player_state.username))
         self.game_manager.setup_player(player_state)
 
     def attach_input(self):
