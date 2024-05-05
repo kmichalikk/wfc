@@ -1,5 +1,6 @@
+import sys
 import time
-from typing import Callable, Union
+from typing import Callable
 import panda3d.core as p3d
 
 from direct.showbase.DirectObject import DirectObject
@@ -102,6 +103,9 @@ class ConnectionManager(DirectObject):
                 game_config.restore(transfer)
                 self.ready_handler(game_config)
                 self.room_found = True
+            elif type == Messages.FIND_ROOM_FAIL:
+                print("[INFO] Server is full - 4/4 players. Access denied.")
+                sys.exit()
             elif type == Messages.GLOBAL_STATE:
                 self.game_state_change_subscriber(transfer)
             elif type == Messages.NEW_PLAYER:

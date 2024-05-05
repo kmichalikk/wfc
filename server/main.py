@@ -197,39 +197,45 @@ class Server(ShowBase):
         pass
 
     def __find_room_for(self, address):
-        new_player = True
-        if address in self.active_players.keys():
-            new_player = False
-            player_controller = self.active_players[address]
-            print(f"  --   Resending to player {player_controller.get_id()}")
-            self.network_transfer_builder.add("id", player_controller.get_id())
+        if len(self.active_players) < 4:
+            new_player = True
+            if address in self.active_players.keys():
+                new_player = False
+                player_controller = self.active_players[address]
+                print(f"  --   Resending to player {player_controller.get_id()}")
+                self.network_transfer_builder.add("id", player_controller.get_id())
+            else:
+                print("  --   Adding new player")
+                player_controller = self.__add_new_player(address, str(self.next_player_id))
+                self.network_transfer_builder.add("id", str(self.next_player_id))
+                self.next_player_id += 1
+            self.network_transfer_builder.set_destination(address)
+            self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
+            game_config = GameConfig(
+                self.tiles,
+                self.expected_players,
+                player_controller.get_id(),
+                [player.get_state() for player in self.active_players.values()],
+                MAP_SIZE,
+                self.season
+            )
+            # fill game_config
+            game_config.transfer(self.network_transfer_builder)
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+            if not new_player:
+                return
+
+            # respond with data and notify other players
+            self.broadcast_new_player(
+                player_controller.get_id(),
+                player_controller.get_state()
+            )
+            self.update_flag_state(address)
         else:
-            print("  --   Adding new player")
-            player_controller = self.__add_new_player(address, str(self.next_player_id))
-            self.network_transfer_builder.add("id", str(self.next_player_id))
-            self.next_player_id += 1
-        self.network_transfer_builder.set_destination(address)
-        self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
-        game_config = GameConfig(
-            self.tiles,
-            self.expected_players,
-            player_controller.get_id(),
-            [player.get_state() for player in self.active_players.values()],
-            MAP_SIZE,
-            self.season
-        )
-        # fill game_config
-        game_config.transfer(self.network_transfer_builder)
-        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-
-        if not new_player:
-            return
-
-        # respond with data and notify other players
-        self.broadcast_new_player(
-            player_controller.get_id(),
-            player_controller.get_state()
-        )
+            self.network_transfer_builder.set_destination(address)
+            self.network_transfer_builder.add("type", Messages.FIND_ROOM_FAIL)
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
     def handle_flag_pickup(self, player_address, player):
         if not self.flag.taken():
@@ -339,6 +345,7 @@ class Server(ShowBase):
 
     # to be called after __setup_collisions()
     def __setup_view(self):
+        simplepbr.init()
         self.disableMouse()
 
         properties = p3d.WindowProperties()
@@ -392,6 +399,14 @@ class Server(ShowBase):
             self.network_transfer_builder.cleanup()
         time.sleep(0.5)
         self.reset_server()
+
+    def update_flag_state(self, address):
+        if self.flag.taken():
+            self.network_transfer_builder.set_destination(address)
+            self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_FLAG)
+            self.network_transfer_builder.add("player", self.flag.player.get_id())
+
+            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
 
 if __name__ == "__main__":
