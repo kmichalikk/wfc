@@ -117,7 +117,6 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
             case "-right": self.active_inputs_raw.add_x(-1)
             case "+left": self.active_inputs_raw.add_x(-1)
             case "-left": self.active_inputs_raw.add_x(1)
-            case "stop": self.active_inputs_raw = Vec3(0, 0, 0)
         normalized_inputs = self.active_inputs_raw.normalized()
         self.active_inputs.set_x(normalized_inputs.get_x())
         self.active_inputs.set_y(normalized_inputs.get_y())

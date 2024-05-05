@@ -52,7 +52,7 @@ class Server(ShowBase):
         self.next_player_id = 0
         self.frames_processed = 0
         self.expected_players = expected_players
-        self.season = random.choices([0, 1], weights=[9, 1], k=1)[0]
+        self.season = random.choices([0, 1], weights=[5, 5], k=1)[0]
         print("[INFO] Starting WFC map generation")
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.bullet_factory = BulletFactory(self.render)
@@ -358,7 +358,6 @@ class Server(ShowBase):
 
     # to be called after __setup_collisions()
     def __setup_view(self):
-        simplepbr.init()
         self.disableMouse()
 
         properties = p3d.WindowProperties()
