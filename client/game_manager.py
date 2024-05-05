@@ -122,9 +122,9 @@ class GameManager:
         self.main_player_server_view.sync_position()
 
         # show UI
-        player_stats = PlayerStats(self.game.loader, player.get_id())
-        player_stats.display()
-        player_stats.set_energy(0.5)
+        self.player_stats = PlayerStats(self.game.loader, player.get_id())
+        self.player_stats.display()
+        self.player_stats.set_energy(10)
 
     def sync_game_state(self, task):
         if self.tick_update:
@@ -141,12 +141,14 @@ class GameManager:
         return task.cont
 
     def lose_energy(self):
+        self.player_stats.set_energy(self.main_player.get_energy())
         if self.main_player.get_energy() > 0:
             self.main_player.lose_energy()
 
             if self.main_player.get_energy() <= 0:
+                print("Out of energy")
                 self.main_player.freeze()
-                self.game.taskMgr.do_method_later(4, lambda _: self.game.connection_manager.send_freeze_trigger(self.main_player.get_id()),
+                self.game.taskMgr.do_method_later(0, lambda _: self.game.connection_manager.send_freeze_trigger(self.main_player.get_id()),
                                            "send input on next frame")
 
     def resume_player(self):

@@ -46,7 +46,7 @@ class PlayerController(CollisionObject):
         return False
 
     def charge_energy(self):
-        self.state.energy += 10
+        self.state.energy += 5
 
     def lose_energy(self):
         self.state.energy -= 0.05
@@ -61,6 +61,7 @@ class PlayerController(CollisionObject):
 
     def resume(self):
         self.state.motion_state.change_rate = 4
+        self.state.energy = 10
 
     def replace_state(self, state: PlayerStateDiff):
         state.motion_state.active_inputs = self.state.motion_state.active_inputs

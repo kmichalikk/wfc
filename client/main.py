@@ -45,11 +45,11 @@ class Game(ShowBase):
         self.flag = Flag(self)
 
         self.bolt_factory = BoltFactory(self.loader, self.render)
+        self.connection_manager.subscribe_for_game_end(self.game_manager.game_end_handler)
 
     def start(self, username):
         self.connection_manager.wait_for_connection(self.ready_handler, username)
         self.connection_manager.subscribe_for_new_player(self.new_player_handler)
-        self.connection_manager.subscribe_for_game_end(self.game_manager.game_end_handler)
 
     def ready_handler(self, game_config: GameConfig):
         self.expected_players = game_config.expected_players

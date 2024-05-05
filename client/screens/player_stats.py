@@ -27,7 +27,21 @@ class PlayerStats:
         self.card = aspect2d.attach_new_node(self.maker.generate())
         self.card.set_texture(self.textures[6])
 
-    def set_energy(self, level: float):
-        """sets texture according to energy level [0,1]"""
+    def set_energy(self, energy: float):
+        """sets texture according to energy level [0,10]"""
         if self.card is not None:
-            self.card.set_texture(self.textures[min(max(int(level * 6), 0), 6)])
+            if energy <= 0:
+                level = 0
+            elif energy < 1:
+                level = 1
+            elif energy < 5:
+                level = 2
+            elif energy < 10:
+                level = 3
+            elif energy < 20:
+                level = 4
+            elif energy < 30:
+                level = 5
+            else:
+                level = 6
+            self.card.set_texture(self.textures[level])

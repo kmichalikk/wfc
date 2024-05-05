@@ -138,6 +138,7 @@ class ConnectionManager(DirectObject):
             elif type == Messages.BOLTS_UPDATE:
                 self.client.update_bolts(transfer.get("old_bolt"), transfer.get("new_bolt"))
             elif type == Messages.RESUME_PLAYER:
+                print("[INFO] Energy recharged")
                 self.client.game_manager.resume_player()
 
         return task.cont

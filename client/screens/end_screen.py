@@ -14,7 +14,7 @@ class EndScreen:
 
         self.displayed = True
         heading = p3d.TextNode('heading')
-        heading.set_text("Koniec gry" if not winning else "Wygrana!")
+        heading.set_text("End of the game" if not winning else "You won!")
         heading.set_font(self.font)
         heading.set_card_color((0, 0, 0, 0.5))
         heading.set_card_as_margin(20, 20, 20, 20)
@@ -24,7 +24,7 @@ class EndScreen:
         heading_node_path.set_scale(0.15)
         if not winning:
             subtext = p3d.TextNode('subtext')
-            subtext.set_text(f"Gracz {winner_id} wrócił do bazy z flagą")
+            subtext.set_text(f"Player {winner_id} came back to his base with the flag")
             subtext.set_font(self.font)
             subtext.set_align(p3d.TextNode.ACenter)
             subtext_node_path = aspect2d.attach_new_node(subtext)
