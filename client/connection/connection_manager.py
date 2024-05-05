@@ -99,6 +99,12 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
+    def send_freeze_trigger(self, player):
+        self.network_transfer_builder.add("type", Messages.FREEZE_PLAYER)
+        self.network_transfer_builder.add("player", player)
+        self.network_transfer_builder.set_destination(self.server_address)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
     def process_messages(self, task):
         for transfer in self.udp_connection.get_queued_transfers():
             type = transfer.get("type")
@@ -131,5 +137,7 @@ class ConnectionManager(DirectObject):
                 self.client.setup_bolts(transfer.get("current_bolts"))
             elif type == Messages.BOLTS_UPDATE:
                 self.client.update_bolts(transfer.get("old_bolt"), transfer.get("new_bolt"))
+            elif type == Messages.RESUME_PLAYER:
+                self.client.game_manager.resume_player()
 
         return task.cont

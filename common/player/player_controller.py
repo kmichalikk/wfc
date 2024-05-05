@@ -54,6 +54,14 @@ class PlayerController(CollisionObject):
     def get_energy(self):
         return self.state.energy
 
+    def freeze(self):
+        self.state.motion_state.change_rate = 0
+        self.state.motion_state.velocity.set_x(0)
+        self.state.motion_state.velocity.set_y(0)
+
+    def resume(self):
+        self.state.motion_state.change_rate = 4
+
     def replace_state(self, state: PlayerStateDiff):
         state.motion_state.active_inputs = self.state.motion_state.active_inputs
         self.state = state

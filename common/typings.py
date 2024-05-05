@@ -31,7 +31,8 @@ class Messages(IntEnum):
     BOLTS_UPDATE = auto()
     BOLTS_SETUP = auto()
     GAME_END = auto()
-
+    FREEZE_PLAYER = auto()
+    RESUME_PLAYER = auto()
 
 class TimeStep(NamedTuple):
     begin: float

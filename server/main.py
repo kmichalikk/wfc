@@ -131,6 +131,8 @@ class Server(ShowBase):
                 self.handle_flag_drop(transfer.get_source(), transfer.get("player"))
             elif type == Messages.PLAYER_PICKED_BOLT:
                 self.update_bolts(transfer.get("bolt_id"))
+            elif type == Messages.FREEZE_PLAYER:
+                self.freeze_player(transfer.get("player"))
         return task.cont
 
     def update_bullets(self, task):
@@ -434,6 +436,19 @@ class Server(ShowBase):
         self.network_transfer_builder.set_destination(address)
         self.network_transfer_builder.add("type", Messages.BOLTS_SETUP)
         self.network_transfer_builder.add("current_bolts", self.bolt_factory.current_bolts)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+    def freeze_player(self, player_id):
+        address = self.get_address_by_id(player_id)
+        player = self.active_players[address]
+        player.freeze()
+        self.handle_flag_drop(address, player_id)
+        taskMgr.do_method_later(4, lambda _: self.resume_player(address, player), "enable movement")
+
+    def resume_player(self, address, player):
+        player.resume()
+        self.network_transfer_builder.set_destination(address)
+        self.network_transfer_builder.add("type", Messages.RESUME_PLAYER)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
 

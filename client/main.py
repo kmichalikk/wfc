@@ -82,11 +82,6 @@ class Game(ShowBase):
         self.accept("space-up", lambda: self.handle_bullet())
         self.accept("q", lambda: self.handle_flag_drop())
 
-    def detach_input(self):
-        keys = ["w", "w-up", "s", "s-up", "d", "d-up", "a", "a-up"]
-        for key in keys:
-            self.accept(key, lambda: self.handle_input("stop"))
-
     def handle_bullet(self):
         direction = self.game_manager.shoot_bullet()
         timestamp = int(time.time()*1000)

@@ -145,14 +145,13 @@ class GameManager:
             self.main_player.lose_energy()
 
             if self.main_player.get_energy() <= 0:
-                self.game.detach_input()
-                if self.main_player.has_flag():
-                    self.game.handle_flag_drop()
-                self.game.taskMgr.do_method_later(3, lambda _: self.resume_player(), "enable movement")
+                self.main_player.freeze()
+                self.game.taskMgr.do_method_later(4, lambda _: self.game.connection_manager.send_freeze_trigger(self.main_player.get_id()),
+                                           "send input on next frame")
 
     def resume_player(self):
+        self.main_player.resume()
         self.main_player.charge_energy()
-        self.game.attach_input()
 
     def update_bullets(self):
         for bullet in self.bullets:
