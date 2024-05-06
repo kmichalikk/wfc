@@ -5,7 +5,7 @@ import panda3d.core as p3d
 import random
 
 from common.collision.collision_object import CollisionObject
-from common.config import BULLET_ENERGY
+from common.config import BULLET_ENERGY, BOLT_ENERGY
 from common.objects.cloud_factory import CloudFactory
 from common.state.player_state_diff import PlayerStateDiff
 from common.typings import Input, TimeStep
@@ -50,7 +50,7 @@ class PlayerController(CollisionObject):
         return False
 
     def charge_energy(self):
-        self.state.energy += 5
+        self.state.energy += BOLT_ENERGY
         self.state.energy = min(self.state.energy, 35)
 
     def lose_energy(self, amount=0.05):
