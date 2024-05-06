@@ -4,6 +4,7 @@ from panda3d.core import TextNode, Vec3
 
 class WaitingScreen:
     def __init__(self, loader):
+        self.is_displayed = False
         self.textNodePath = None
         self.font = loader.loadFont("../common/assets/Font.ttf")
         self.text = TextNode('waiting')
@@ -14,11 +15,13 @@ class WaitingScreen:
         self.text.setAlign(TextNode.ACenter)
 
     def display(self):
+        self.is_displayed = True
         self.textNodePath = aspect2d.attachNewNode(self.text)
         self.textNodePath.setScale(0.07)
         self.textNodePath.setPos(Vec3(0, 0))
 
     def hide(self):
+        self.is_displayed = False
         self.textNodePath.removeNode()
 
     def update(self, active_players, expected_players):
