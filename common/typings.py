@@ -10,6 +10,8 @@ Item = Literal["flag", "empty"]
 
 Address = tuple[Union[str, None], Union[int, None]]  # (address, port)
 
+BulletMetadata = tuple[float, float, float, float]  # position x, y; direction x, y
+
 
 class Messages(IntEnum):
     HELLO = auto()

@@ -292,6 +292,15 @@ class GameManager:
         while len(self.server_game_state_transfer_deque) > 5:
             self.server_game_state_transfer_deque.popleft()
         self.tick_update = True
+        bullet_metadata = transfer.get("bullets").split(",")
+        if len(bullet_metadata) > 1 or bullet_metadata[0] != "":
+            self.__spawn_incoming_bullets(bullet_metadata, server_game_state.step.end)
+
+    def __spawn_incoming_bullets(self, bullet_metadata: list[str], state_update_time: float):
+        for data in bullet_metadata:
+            bullet = self.bullet_factory.get_one_from_metadata(tuple(map(float, data.split(" "))))  # type: ignore
+            bullet.update_position_by_dt(time.time() - state_update_time - self.other_players_delay)
+            self.bullets.append(bullet)
 
     def game_end_handler(self, winner_id, winner_username):
         self.end_screen.display(self.main_player.get_id() == winner_id, winner_username)
