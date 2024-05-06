@@ -306,9 +306,9 @@ class GameManager:
             bullet.update_position_by_dt(time.time() - state_update_time - self.other_players_delay)
             self.bullets.append(bullet)
 
-    def game_end_handler(self, winner_id, winner_username):
+    def game_end_handler(self, winner_id, winner_username, wins, losses):
         self.end_screen.display(self.main_player.get_id() == winner_id,
-                                winner_username, self.main_player.get_username())
+                                winner_username, self.main_player.get_username(), wins, losses)
 
     def setup_map(self, game, tiles, map_size, season):
         game.disableMouse()

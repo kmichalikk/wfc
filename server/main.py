@@ -424,6 +424,16 @@ class Server(ShowBase):
             address: Address
             for address in self.active_players.keys():
                 # resend the same transfer to all players, change only destination
+                username = self.active_players[address].get_username()
+                if username == self.game_won_by.get_username():
+                    self.db_manager.update_wins(username)
+                else:
+                    self.db_manager.update_losses(username)
+
+                wins, losses = self.db_manager.get_user_stats(username)
+                self.network_transfer_builder.add("wins", wins)
+                self.network_transfer_builder.add("losses", losses)
+
                 self.network_transfer_builder.set_destination(address)
                 self.udp_connection.enqueue_transfer(
                     self.network_transfer_builder.encode(reset=False)
