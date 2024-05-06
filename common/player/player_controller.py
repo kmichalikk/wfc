@@ -5,6 +5,7 @@ import panda3d.core as p3d
 import random
 
 from common.collision.collision_object import CollisionObject
+from common.config import BULLET_ENERGY
 from common.objects.cloud_factory import CloudFactory
 from common.state.player_state_diff import PlayerStateDiff
 from common.typings import Input, TimeStep
@@ -37,7 +38,6 @@ class PlayerController(CollisionObject):
     def get_username(self) -> str:
         return self.state.username
 
-
     def get_state(self) -> PlayerStateDiff:
         return self.state
 
@@ -53,17 +53,24 @@ class PlayerController(CollisionObject):
         self.state.energy += 5
         self.state.energy = min(self.state.energy, 35)
 
-    def lose_energy(self):
-        self.state.energy -= 0.05
+    def lose_energy(self, amount=0.05):
+        amount = max(0, amount)
+        self.state.energy -= amount
 
     def get_energy(self):
         return self.state.energy
 
+    def try_shooting(self) -> Union[p3d.Vec3, None]:
+        if self.get_energy() < BULLET_ENERGY:
+            return None
+        self.lose_energy(BULLET_ENERGY)
+        return self.get_state().get_direction()
+
     def freeze(self):
-        self.state.motion_state.change_rate = 0
+        self.state.motion_state.set_frozen()
 
     def resume(self):
-        self.state.motion_state.change_rate = 4
+        self.state.motion_state.clear_frozen()
         self.state.energy = 10
 
     def replace_state(self, state: PlayerStateDiff):
