@@ -27,7 +27,7 @@ from common.connection.udp_connection_thread import UDPConnectionThread
 from common.transfer.network_transfer_builder import NetworkTransferBuilder
 from common.typings import Messages, Address, TimeStep
 from server.wfc.wfc_starter import start_wfc
-from server.accounts.login_manager import LoginManager
+from server.accounts.db_manager import DBManager
 
 sys.path.append("../common")
 
@@ -42,7 +42,7 @@ class Server(ShowBase):
         self.view = view
         self.port = port
         self.udp_connection = UDPConnectionThread('0.0.0.0', port, server=True)
-        self.logging_manager = LoginManager()
+        self.db_manager = DBManager()
         self.node_path_factory = TileNodePathFactory(self.loader)
         self.network_transfer_builder = NetworkTransferBuilder()
         self.active_players: dict[Address, PlayerController] = {}
@@ -367,7 +367,7 @@ class Server(ShowBase):
         return new_player_controller
 
     def log_in(self, username):
-        self.logging_manager.login(username)
+        self.db_manager.login(username)
 
     def __setup_collisions(self):
         setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)

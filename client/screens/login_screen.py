@@ -32,6 +32,7 @@ class LoginScreen:
         self.login_entry.setPos(Vec3(-0.4, 0))
 
     def log_in(self, username):
+        username = username.lower()
         self.start(username)
 
     def hide(self):
