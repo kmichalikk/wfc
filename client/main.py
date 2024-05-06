@@ -84,6 +84,8 @@ class Game(ShowBase):
 
     def handle_bullet(self):
         direction = self.game_manager.shoot_bullet()
+        if direction is None:
+            return
         timestamp = int(time.time()*1000)
         self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_gun_trigger(direction, timestamp),
                                      "send input on next frame")

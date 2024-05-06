@@ -4,17 +4,15 @@ from collections import deque
 import panda3d.core as p3d
 
 from typing import Union
-from common.config import MAP_SIZE
+from common.config import MAP_SIZE, BULLET_ENERGY
 
 from direct.showbase import ShowBase
 from direct.task import Task
-
 
 from client.screens.player_stats import PlayerStats
 
 from client.screens.end_screen import EndScreen
 from client.screens.waiting_screen import WaitingScreen
-
 
 from common.collision.setup import setup_collisions
 from common.config import TIME_STEP
@@ -99,7 +97,7 @@ class GameManager:
         self.game.taskMgr.add(self.game_state_snapshot, "store game state diffs", sort=2)
         self.game.accept("bullet-into-wall", self.handle_bullet_wall_hit)
         self.game.accept('player' + player.get_id() + '-into-flag', self.game.handle_flag, [self.main_player])
-        for i in range(0, MAP_SIZE//2):
+        for i in range(0, MAP_SIZE // 2):
             self.game.accept('player' + player.get_id() + '-into-bolt' + str(i), self.game.pick_bolt)
 
         # add collider to main player controller
@@ -148,8 +146,11 @@ class GameManager:
             if self.main_player.get_energy() <= 0:
                 print("[INFO] Out of energy")
                 self.main_player.freeze()
-                self.game.taskMgr.do_method_later(0, lambda _: self.game.connection_manager.send_freeze_trigger(self.main_player.get_id()),
-                                           "send input on next frame")
+                self.game.taskMgr.do_method_later(
+                    0,
+                    lambda _: self.game.connection_manager.send_freeze_trigger(self.main_player.get_id()),
+                    "send input on next frame"
+                )
 
     def resume_player(self):
         self.main_player.resume()
@@ -159,15 +160,17 @@ class GameManager:
         for bullet in self.bullets:
             bullet.update_position()
 
-    def shoot_bullet(self) -> p3d.Vec3:
-        direction = self.main_player.get_state().get_direction()
-        bullet = self.bullet_factory.get_one(
-            (self.main_player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
-             + direction * 0.5),
-            direction,
-            self.main_player.get_id()
-        )
-        self.bullets.append(bullet)
+    def shoot_bullet(self) -> Union[p3d.Vec3, None]:
+        direction = self.main_player.try_shooting()
+        if direction is not None:
+            self.main_player.lose_energy(BULLET_ENERGY)
+            bullet = self.bullet_factory.get_one(
+                (self.main_player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
+                 + direction * 0.5),
+                direction,
+                self.main_player.get_id()
+            )
+            self.bullets.append(bullet)
         return direction
 
     def handle_bullet_wall_hit(self, entry):
@@ -266,7 +269,7 @@ class GameManager:
                 self.players[id].replace_state(state.clone())
                 self.players[id].sync_position()
             return
-        prior_state = self.server_game_state_transfer_deque[i-1].clone()
+        prior_state = self.server_game_state_transfer_deque[i - 1].clone()
         diff = prior_state.diff(self.server_game_state_transfer_deque[i])
         for id, state in diff.player_state.items():
             if id == self.main_player.get_id():

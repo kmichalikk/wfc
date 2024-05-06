@@ -17,6 +17,7 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.active_inputs_raw: Vec3 = Vec3(0, 0, 0)
         self.active_inputs: Vec3 = Vec3(0, 0, 0)
         self.change_rate = 4
+        self.freeze_mask = 1
 
     def apply(self, other: 'MotionStateDiff'):
         self.step = TimeStep(begin=self.step.begin, end=other.step.end)
@@ -66,16 +67,22 @@ class MotionStateDiff(SupportsNetworkTransfer, SupportsDiff):
         self.velocity.set_x(float(transfer.get(f"m{self.player_id}vx")))
         self.velocity.set_y(float(transfer.get(f"m{self.player_id}vy")))
 
+    def set_frozen(self):
+        self.freeze_mask = 0
+
+    def clear_frozen(self):
+        self.freeze_mask = 1
+
     def update(self):
         """ updates motion, makes sense only for full diffs (step.begin == 0) """
         dt = globalClock.get_dt()
         self.velocity.set_x(
             self.velocity.get_x() * (1 - dt * self.change_rate)
-            + self.active_inputs.get_x() * self.target_velocity * dt * self.change_rate
+            + self.active_inputs.get_x() * self.target_velocity * dt * self.change_rate * self.freeze_mask
         )
         self.velocity.set_y(
             self.velocity.get_y() * (1 - dt * self.change_rate)
-            + self.active_inputs.get_y() * self.target_velocity * dt * self.change_rate
+            + self.active_inputs.get_y() * self.target_velocity * dt * self.change_rate * self.freeze_mask
         )
         self.position.set_x(self.position.get_x() + self.velocity.get_x() * dt)
         self.position.set_y(self.position.get_y() + self.velocity.get_y() * dt)

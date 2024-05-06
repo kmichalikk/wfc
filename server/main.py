@@ -13,7 +13,7 @@ from direct.task.TaskManagerGlobal import taskMgr
 from panda3d.core import Vec3, ClockObject
 
 from common.collision.setup import setup_collisions
-from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
+from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE, BULLET_ENERGY
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
 from common.objects.bolt_factory import BoltFactory
@@ -118,6 +118,9 @@ class Server(ShowBase):
                 if transfer.get_source() in self.active_players:
                     player = self.active_players[transfer.get_source()]
                     trigger_timestamp = transfer.get("timestamp")
+                    if player.state.energy < BULLET_ENERGY:
+                        return
+                    player.lose_energy(BULLET_ENERGY)
                     self.shoot_bullet(
                         p3d.Vec3(float(transfer.get('x')), float(transfer.get('y')), 0),
                         player,
@@ -319,7 +322,7 @@ class Server(ShowBase):
         bullets = [b for b in all_bullets if b.owner_id != player_id]
         new_bullets_metadata = ""
         for b in bullets:
-            new_bullets_metadata += f"{" ".join([str(md) for md in b.get_metadata()])},"
+            new_bullets_metadata += f"{' '.join([str(md) for md in b.get_metadata()])},"
         return new_bullets_metadata[:-1]
 
     def broadcast_player_disconnected(self, task):
