@@ -16,6 +16,7 @@ from common.typings import Address, Messages
 
 class ConnectionManager(DirectObject):
     """ Proxy for UDP connection thread """
+
     def __init__(self, server_address: Address, client):
         super().__init__()
         self.server_address = server_address
@@ -26,7 +27,7 @@ class ConnectionManager(DirectObject):
         self.ready_handler = lambda _: False
         self.game_state_change_subscriber = lambda _: False
         self.new_player_subscriber = lambda _: False
-        self.game_end_subscriber = lambda _: False
+        self.game_end_subscriber: Callable[[str, str, int, int], None] = lambda a, b, c, d: None
 
         # initialize UDP thread
         self.udp_connection = UDPConnectionThread(server_address[0], 0)
@@ -55,6 +56,7 @@ class ConnectionManager(DirectObject):
             self.network_transfer_builder.add("username", username)
             self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
             taskMgr.do_method_later(2, wait, 'wait for room')
+
         wait(None)
 
     def subscribe_for_game_state_change(self, subscriber: Callable[[NetworkTransfer], None]):
@@ -63,7 +65,7 @@ class ConnectionManager(DirectObject):
     def subscribe_for_new_player(self, subscriber: Callable[[PlayerStateDiff], None]):
         self.new_player_subscriber = subscriber
 
-    def subscribe_for_game_end(self, subscriber: Callable[[str], None]):
+    def subscribe_for_game_end(self, subscriber: Callable[[str, str, int, int], None]):
         self.game_end_subscriber = subscriber
 
     def send_input_update(self, input: str):
@@ -132,7 +134,8 @@ class ConnectionManager(DirectObject):
                 self.client.player_flag_drop(transfer.get("player"))
             elif type == Messages.GAME_END:
                 print("[INFO] Game end")
-                self.game_end_subscriber(str(transfer.get("id")), transfer.get("username"))
+                self.game_end_subscriber(str(transfer.get("id")), transfer.get("username"),
+                                         int(transfer.get("wins")), int(transfer.get("losses")))
             elif type == Messages.BOLTS_SETUP:
                 self.client.setup_bolts(transfer.get("current_bolts"))
             elif type == Messages.BOLTS_UPDATE:

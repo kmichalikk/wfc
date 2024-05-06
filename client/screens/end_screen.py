@@ -11,7 +11,7 @@ class EndScreen:
         self.displayed = False
         self.db_manager = DBManager()
 
-    def display(self, winning: bool, winner_username: str, player_username: str):
+    def display(self, winning: bool, winner_username: str, player_username: str, player_wins: int, player_losses: int):
         if self.displayed:
             return
 
@@ -34,20 +34,14 @@ class EndScreen:
             subtext_node_path = aspect2d.attach_new_node(subtext)
             subtext_node_path.set_pos(p3d.Vec3(0, 0))
             subtext_node_path.set_scale(0.07)
-
-            self.db_manager.update_losses(player_username)
             stats_position = p3d.Vec3(0, -0.3)
         else:
-            self.db_manager.update_wins(player_username)
             stats_position = p3d.Vec3(0, 0)
 
         subtext_stats = p3d.TextNode('subtext')
-        wins, losses = self.db_manager.get_user_stats(player_username)
-        subtext_stats.set_text(f"Your wins: {wins} \n Your losses: {losses}")
+        subtext_stats.set_text(f"Your wins: {player_wins} \n Your losses: {player_losses}")
         subtext_stats.set_font(self.font)
         subtext_stats.set_align(p3d.TextNode.ACenter)
         subtext_stats_node_path = aspect2d.attach_new_node(subtext_stats)
         subtext_stats_node_path.set_pos(stats_position)
         subtext_stats_node_path.set_scale(0.07)
-
-
