@@ -1,7 +1,7 @@
 import sqlite3
 
 
-class LoggingManager:
+class LoginManager:
     def __init__(self):
         self.database_path = './server/accounts/accounts.db'
         try:

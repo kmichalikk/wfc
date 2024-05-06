@@ -146,7 +146,7 @@ class GameManager:
             self.main_player.lose_energy()
 
             if self.main_player.get_energy() <= 0:
-                print("Out of energy")
+                print("[INFO] Out of energy")
                 self.main_player.freeze()
                 self.game.taskMgr.do_method_later(0, lambda _: self.game.connection_manager.send_freeze_trigger(self.main_player.get_id()),
                                            "send input on next frame")
@@ -293,8 +293,8 @@ class GameManager:
             self.server_game_state_transfer_deque.popleft()
         self.tick_update = True
 
-    def game_end_handler(self, winner_id):
-        self.end_screen.display(self.main_player.get_id() == winner_id, winner_id)
+    def game_end_handler(self, winner_id, winner_username):
+        self.end_screen.display(self.main_player.get_id() == winner_id, winner_username)
 
     def setup_map(self, game, tiles, map_size, season):
         game.disableMouse()

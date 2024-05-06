@@ -8,7 +8,7 @@ class EndScreen:
         self.font = loader.loadFont("../common/assets/Font.ttf")
         self.displayed = False
 
-    def display(self, winning: bool, winner_id: int):
+    def display(self, winning: bool, winner_username: str):
         if self.displayed:
             return
 
@@ -24,7 +24,7 @@ class EndScreen:
         heading_node_path.set_scale(0.15)
         if not winning:
             subtext = p3d.TextNode('subtext')
-            subtext.set_text(f"Player {winner_id} came back to his base with the flag")
+            subtext.set_text(f"Player {winner_username} came back to their base \n with the flag")
             subtext.set_font(self.font)
             subtext.set_align(p3d.TextNode.ACenter)
             subtext_node_path = aspect2d.attach_new_node(subtext)

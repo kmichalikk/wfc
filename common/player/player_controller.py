@@ -34,6 +34,10 @@ class PlayerController(CollisionObject):
     def get_id(self) -> str:
         return self.state.id
 
+    def get_username(self) -> str:
+        return self.state.username
+
+
     def get_state(self) -> PlayerStateDiff:
         return self.state
 
@@ -47,6 +51,7 @@ class PlayerController(CollisionObject):
 
     def charge_energy(self):
         self.state.energy += 5
+        self.state.energy = min(self.state.energy, 35)
 
     def lose_energy(self):
         self.state.energy -= 0.05
@@ -56,8 +61,6 @@ class PlayerController(CollisionObject):
 
     def freeze(self):
         self.state.motion_state.change_rate = 0
-        self.state.motion_state.velocity.set_x(0)
-        self.state.motion_state.velocity.set_y(0)
 
     def resume(self):
         self.state.motion_state.change_rate = 4

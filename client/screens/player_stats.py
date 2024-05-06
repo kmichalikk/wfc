@@ -28,7 +28,7 @@ class PlayerStats:
         self.card.set_texture(self.textures[6])
 
     def set_energy(self, energy: float):
-        """sets texture according to energy level [0,10]"""
+        """sets texture according to energy level [0,35]"""
         if self.card is not None:
             if energy <= 0:
                 level = 0

@@ -5,7 +5,6 @@ from collections import deque
 from typing import Union
 
 import panda3d.core as p3d
-import simplepbr
 from direct.showbase.MessengerGlobal import messenger
 
 from direct.showbase.ShowBase import ShowBase
@@ -28,7 +27,7 @@ from common.connection.udp_connection_thread import UDPConnectionThread
 from common.transfer.network_transfer_builder import NetworkTransferBuilder
 from common.typings import Messages, Address, TimeStep
 from server.wfc.wfc_starter import start_wfc
-from server.accounts.logging_manager import LoggingManager
+from server.accounts.login_manager import LoginManager
 
 sys.path.append("../common")
 
@@ -43,7 +42,7 @@ class Server(ShowBase):
         self.view = view
         self.port = port
         self.udp_connection = UDPConnectionThread('0.0.0.0', port, server=True)
-        self.logging_manager = LoggingManager()
+        self.logging_manager = LoginManager()
         self.node_path_factory = TileNodePathFactory(self.loader)
         self.network_transfer_builder = NetworkTransferBuilder()
         self.active_players: dict[Address, PlayerController] = {}
@@ -204,47 +203,48 @@ class Server(ShowBase):
         pass
 
     def __find_room_for(self, address, username):
-        if len(self.active_players) < 4:
-            new_player = True
-            if address in self.active_players.keys():
-                new_player = False
-                player_controller = self.active_players[address]
-                print(f"  --   Resending to player {player_controller.get_id()}")
-                self.network_transfer_builder.add("id", player_controller.get_id())
-            else:
-                print("  --   Adding new player")
-                player_controller = self.__add_new_player(address, str(self.next_player_id), username)
-                self.network_transfer_builder.add("id", str(self.next_player_id))
-                self.next_player_id += 1
-            self.network_transfer_builder.set_destination(address)
-            self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
-            game_config = GameConfig(
-                self.tiles,
-                self.expected_players,
-                player_controller.get_id(),
-                [player.get_state() for player in self.active_players.values()],
-                MAP_SIZE,
-                self.season
-            )
-            # fill game_config
-            game_config.transfer(self.network_transfer_builder)
-            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-
-            if not new_player:
-                return
-
-            # respond with data and notify other players
-            self.broadcast_new_player(
-                player_controller.get_id(),
-                player_controller.get_state()
-            )
-            self.update_flag_state(address)
-            self.log_in(username)
-            self.setup_bolts(address)
-        else:
+        if len(self.active_players) >= 4:
             self.network_transfer_builder.set_destination(address)
             self.network_transfer_builder.add("type", Messages.FIND_ROOM_FAIL)
             self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+            return
+
+        new_player = True
+        if address in self.active_players.keys():
+            new_player = False
+            player_controller = self.active_players[address]
+            print(f"  --   Resending to player {player_controller.get_id()}")
+            self.network_transfer_builder.add("id", player_controller.get_id())
+        else:
+            print("  --   Adding new player")
+            player_controller = self.__add_new_player(address, str(self.next_player_id), username)
+            self.network_transfer_builder.add("id", str(self.next_player_id))
+            self.next_player_id += 1
+        self.network_transfer_builder.set_destination(address)
+        self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
+        game_config = GameConfig(
+            self.tiles,
+            self.expected_players,
+            player_controller.get_id(),
+            [player.get_state() for player in self.active_players.values()],
+            MAP_SIZE,
+            self.season
+        )
+        # fill game_config
+        game_config.transfer(self.network_transfer_builder)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+        if not new_player:
+            return
+
+        # respond with data and notify other players
+        self.broadcast_new_player(
+            player_controller.get_id(),
+            player_controller.get_state()
+        )
+        self.update_flag_state(address)
+        self.log_in(username)
+        self.setup_bolts(address)
 
     def handle_flag_pickup(self, player_address, player):
         if not self.flag.taken():
@@ -331,7 +331,7 @@ class Server(ShowBase):
         new_player_state.set_position((self.player_positions[int(new_player_state.id)]))
         model = self.node_path_factory.get_player_model(new_player_state.id)
         model.reparent_to(self.render)
-        new_player_controller = PlayerController(model, new_player_state, username)
+        new_player_controller = PlayerController(model, new_player_state)
         self.active_players[address] = new_player_controller
         new_player_controller.sync_position()
 
@@ -400,6 +400,8 @@ class Server(ShowBase):
             print(f"[INFO] Broadcasting game end {i+1}th time")
             self.network_transfer_builder.add("type", Messages.GAME_END)
             self.network_transfer_builder.add("id", self.game_won_by.get_id())
+            self.network_transfer_builder.add("username", self.game_won_by.get_username())
+
             address: Address
             for address in self.active_players.keys():
                 # resend the same transfer to all players, change only destination
@@ -439,10 +441,11 @@ class Server(ShowBase):
 
     def freeze_player(self, player_id):
         address = self.get_address_by_id(player_id)
-        player = self.active_players[address]
-        player.freeze()
-        self.handle_flag_drop(address, player_id)
-        taskMgr.do_method_later(4, lambda _: self.resume_player(address, player), "enable movement")
+        if address in self.active_players.keys():
+            player = self.active_players[address]
+            player.freeze()
+            self.handle_flag_drop(address, player_id)
+            taskMgr.do_method_later(4, lambda _: self.resume_player(address, player), "enable movement")
 
     def resume_player(self, address, player):
         player.resume()

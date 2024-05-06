@@ -132,7 +132,7 @@ class ConnectionManager(DirectObject):
                 self.client.player_flag_drop(transfer.get("player"))
             elif type == Messages.GAME_END:
                 print("[INFO] Game end")
-                self.game_end_subscriber(str(transfer.get("id")))
+                self.game_end_subscriber(str(transfer.get("id")), transfer.get("username"))
             elif type == Messages.BOLTS_SETUP:
                 self.client.setup_bolts(transfer.get("current_bolts"))
             elif type == Messages.BOLTS_UPDATE:

@@ -4,11 +4,11 @@ import simplepbr
 
 from direct.showbase.ShowBase import ShowBase
 from direct.showbase.ShowBaseGlobal import globalClock, aspect2d
-from panda3d.core import ClockObject, PStatClient, load_prc_file_data
+from panda3d.core import ClockObject, load_prc_file_data
 
 from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
-from client.connection.login_screen import LoginScreen
+from client.screens.login_screen import LoginScreen
 
 from common.config import FRAMERATE, SERVER_ADDRESS, SERVER_PORT
 from common.objects.bolt_factory import BoltFactory
