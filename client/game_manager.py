@@ -303,7 +303,8 @@ class GameManager:
             self.bullets.append(bullet)
 
     def game_end_handler(self, winner_id, winner_username):
-        self.end_screen.display(self.main_player.get_id() == winner_id, winner_username)
+        self.end_screen.display(self.main_player.get_id() == winner_id,
+                                winner_username, self.main_player.get_username())
 
     def setup_map(self, game, tiles, map_size, season):
         game.disableMouse()
