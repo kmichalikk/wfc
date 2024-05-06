@@ -322,7 +322,7 @@ class Server(ShowBase):
         bullets = [b for b in all_bullets if b.owner_id != player_id]
         new_bullets_metadata = ""
         for b in bullets:
-            new_bullets_metadata += f"{" ".join([str(md) for md in b.get_metadata()])},"
+            new_bullets_metadata += f"{' '.join([str(md) for md in b.get_metadata()])},"
         return new_bullets_metadata[:-1]
 
     def broadcast_player_disconnected(self, task):
