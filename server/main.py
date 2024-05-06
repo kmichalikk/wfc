@@ -249,7 +249,9 @@ class Server(ShowBase):
         )
         self.update_flag_state(address)
         self.log_in(username)
-        self.setup_bolts(address)
+        for _ in range(5):
+            self.setup_bolts(address)
+            time.sleep(0.2)
 
     def handle_flag_pickup(self, player_address, player):
         if not self.flag.taken():
@@ -465,7 +467,7 @@ class Server(ShowBase):
     def setup_bolts(self, address):
         self.network_transfer_builder.set_destination(address)
         self.network_transfer_builder.add("type", Messages.BOLTS_SETUP)
-        self.network_transfer_builder.add("current_bolts", self.bolt_factory.current_bolts)
+        self.network_transfer_builder.add("current_bolts", self.bolt_factory.dump_bolts())
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
     def freeze_player(self, player_id):

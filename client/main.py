@@ -44,6 +44,7 @@ class Game(ShowBase):
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
         self.flag = Flag(self)
 
+        self.bolts_set_up = False
         self.bolt_factory = BoltFactory(self.loader, self.render)
         self.connection_manager.subscribe_for_game_end(self.game_manager.game_end_handler)
 
@@ -108,7 +109,10 @@ class Game(ShowBase):
         self.flag.get_dropped(player)
 
     def setup_bolts(self, current_bolts):
-        self.bolt_factory.copy_bolts(current_bolts)
+        if self.bolts_set_up:
+            return
+        self.bolts_set_up = True
+        self.bolt_factory.undump_bolts(current_bolts)
 
     def update_bolts(self, old_bolt_id, new_bolt):
         self.bolt_factory.remove_bolt(old_bolt_id)
