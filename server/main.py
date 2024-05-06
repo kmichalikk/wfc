@@ -42,7 +42,7 @@ class Server(ShowBase):
         self.view = view
         self.port = port
         self.udp_connection = UDPConnectionThread('0.0.0.0', port, server=True)
-        self.logging_manager = DBManager()
+        self.db_manager = DBManager()
         self.node_path_factory = TileNodePathFactory(self.loader)
         self.network_transfer_builder = NetworkTransferBuilder()
         self.active_players: dict[Address, PlayerController] = {}
@@ -367,7 +367,7 @@ class Server(ShowBase):
         return new_player_controller
 
     def log_in(self, username):
-        self.logging_manager.login(username)
+        self.db_manager.login(username)
 
     def __setup_collisions(self):
         setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
