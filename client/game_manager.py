@@ -4,6 +4,7 @@ from collections import deque
 import panda3d.core as p3d
 
 from typing import Union
+from common.config import MAP_SIZE
 
 from direct.showbase import ShowBase
 from direct.task import Task
@@ -98,6 +99,8 @@ class GameManager:
         self.game.taskMgr.add(self.game_state_snapshot, "store game state diffs", sort=2)
         self.game.accept("bullet-into-wall", self.handle_bullet_wall_hit)
         self.game.accept('player' + player.get_id() + '-into-flag', self.game.handle_flag, [self.main_player])
+        for i in range(0, MAP_SIZE//2):
+            self.game.accept('player' + player.get_id() + '-into-bolt' + str(i), self.game.pick_bolt)
 
         # add collider to main player controller
         player_collider = player.colliders[0]
@@ -119,9 +122,9 @@ class GameManager:
         self.main_player_server_view.sync_position()
 
         # show UI
-        player_stats = PlayerStats(self.game.loader, player.get_id())
-        player_stats.display()
-        player_stats.set_energy(0.5)
+        self.player_stats = PlayerStats(self.game.loader, player.get_id())
+        self.player_stats.display()
+        self.player_stats.set_energy(10)
 
     def sync_game_state(self, task):
         if self.tick_update:
@@ -133,7 +136,24 @@ class GameManager:
             self.update_main_player_position()
         self.interpolate_other_players_positions()
         self.update_bullets()
+        self.lose_energy()
+
         return task.cont
+
+    def lose_energy(self):
+        self.player_stats.set_energy(self.main_player.get_energy())
+        if self.main_player.get_energy() > 0:
+            self.main_player.lose_energy()
+
+            if self.main_player.get_energy() <= 0:
+                print("[INFO] Out of energy")
+                self.main_player.freeze()
+                self.game.taskMgr.do_method_later(0, lambda _: self.game.connection_manager.send_freeze_trigger(self.main_player.get_id()),
+                                           "send input on next frame")
+
+    def resume_player(self):
+        self.main_player.resume()
+        self.main_player.charge_energy()
 
     def update_bullets(self):
         for bullet in self.bullets:
@@ -273,11 +293,12 @@ class GameManager:
             self.server_game_state_transfer_deque.popleft()
         self.tick_update = True
 
-    def game_end_handler(self, winner_id):
-        self.end_screen.display(self.main_player.get_id() == winner_id, winner_id)
+    def game_end_handler(self, winner_id, winner_username):
+        self.end_screen.display(self.main_player.get_id() == winner_id, winner_username)
 
     def setup_map(self, game, tiles, map_size, season):
         game.disableMouse()
+        game.login_screen.hide()
 
         properties = p3d.WindowProperties()
         properties.set_size(800, 600)

@@ -34,6 +34,10 @@ class PlayerController(CollisionObject):
     def get_id(self) -> str:
         return self.state.id
 
+    def get_username(self) -> str:
+        return self.state.username
+
+
     def get_state(self) -> PlayerStateDiff:
         return self.state
 
@@ -44,6 +48,23 @@ class PlayerController(CollisionObject):
         if self.state.slot == "flag":
             return True
         return False
+
+    def charge_energy(self):
+        self.state.energy += 5
+        self.state.energy = min(self.state.energy, 35)
+
+    def lose_energy(self):
+        self.state.energy -= 0.05
+
+    def get_energy(self):
+        return self.state.energy
+
+    def freeze(self):
+        self.state.motion_state.change_rate = 0
+
+    def resume(self):
+        self.state.motion_state.change_rate = 4
+        self.state.energy = 10
 
     def replace_state(self, state: PlayerStateDiff):
         state.motion_state.active_inputs = self.state.motion_state.active_inputs

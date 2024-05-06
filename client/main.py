@@ -4,12 +4,14 @@ import simplepbr
 
 from direct.showbase.ShowBase import ShowBase
 from direct.showbase.ShowBaseGlobal import globalClock, aspect2d
-from panda3d.core import ClockObject, PStatClient, load_prc_file_data
+from panda3d.core import ClockObject, load_prc_file_data
 
 from client.game_manager import GameManager
 from client.connection.connection_manager import ConnectionManager
+from client.screens.login_screen import LoginScreen
 
 from common.config import FRAMERATE, SERVER_ADDRESS, SERVER_PORT
+from common.objects.bolt_factory import BoltFactory
 from common.objects.flag import Flag
 from common.state.game_config import GameConfig
 from common.state.player_state_diff import PlayerStateDiff
@@ -36,13 +38,18 @@ class Game(ShowBase):
 
         # initialize ConnectionManager and subscribe to all event it handles
         self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT), self)
-        self.connection_manager.wait_for_connection(self.ready_handler)
+        self.login_screen = LoginScreen(self.loader, self.start)
 
         # initialize GameManager, don't start the game until self.ready
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
         self.flag = Flag(self)
 
+        self.bolt_factory = BoltFactory(self.loader, self.render)
         self.connection_manager.subscribe_for_game_end(self.game_manager.game_end_handler)
+
+    def start(self, username):
+        self.connection_manager.wait_for_connection(self.ready_handler, username)
+        self.connection_manager.subscribe_for_new_player(self.new_player_handler)
 
     def ready_handler(self, game_config: GameConfig):
         self.expected_players = game_config.expected_players
@@ -60,7 +67,7 @@ class Game(ShowBase):
         self.game_manager.queue_server_game_state(game_state_transfer)
 
     def new_player_handler(self, player_state: PlayerStateDiff):
-        print("[INFO] New player with id={}".format(player_state.id))
+        print("[INFO] New player {}".format(player_state.username))
         self.game_manager.setup_player(player_state)
 
     def attach_input(self):
@@ -82,14 +89,12 @@ class Game(ShowBase):
                                      "send input on next frame")
 
     def handle_flag(self, player, entry):
-        timestamp = int(time.time() * 1000)
-        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_trigger(player.get_id(), timestamp),
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_trigger(player.get_id()),
                                      "send input on next frame")
 
     def handle_flag_drop(self):
         player = self.game_manager.main_player
-        timestamp = int(time.time() * 1000)
-        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_drop_trigger(player.get_id(), timestamp),
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_flag_drop_trigger(player.get_id()),
                                      "send input on next frame")
 
     def player_flag_pickup(self, id):
@@ -99,6 +104,21 @@ class Game(ShowBase):
     def player_flag_drop(self, id):
         player = self.game_manager.players[id]
         self.flag.get_dropped(player)
+
+    def setup_bolts(self, current_bolts):
+        self.bolt_factory.copy_bolts(current_bolts)
+
+    def update_bolts(self, old_bolt_id, new_bolt):
+        self.bolt_factory.remove_bolt(old_bolt_id)
+        self.bolt_factory.copy_bolts([new_bolt])
+
+    def pick_bolt(self, entry):
+        bolt_id = entry.getIntoNodePath().node().getName()[-1]
+        player_id = entry.getFromNodePath().node().getName()[-1]
+        player = self.game_manager.players[player_id]
+        player.charge_energy()
+        self.taskMgr.do_method_later(0, lambda _: self.connection_manager.send_bolt_pickup_trigger(bolt_id),
+                                     "send input on next frame")
 
     def handle_input(self, input: Input):
         self.game_manager.main_player.update_input(input)

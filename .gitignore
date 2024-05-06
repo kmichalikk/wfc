@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 
 common/config.py
+server/accounts/accounts.db

@@ -1,5 +1,6 @@
+import sys
 import time
-from typing import Callable, Union
+from typing import Callable
 import panda3d.core as p3d
 
 from direct.showbase.DirectObject import DirectObject
@@ -41,7 +42,7 @@ class ConnectionManager(DirectObject):
         # begin processing of incoming messages
         taskMgr.add(self.process_messages, "process incoming transfers")
 
-    def wait_for_connection(self, ready_handler: Callable[[GameConfig], None]):
+    def wait_for_connection(self, ready_handler: Callable[[GameConfig], None], username):
         """ Add listener for server sending room information, send a room request """
         self.ready_handler = ready_handler
 
@@ -51,6 +52,7 @@ class ConnectionManager(DirectObject):
 
             self.network_transfer_builder.set_destination(self.server_address)
             self.network_transfer_builder.add("type", Messages.FIND_ROOM)
+            self.network_transfer_builder.add("username", username)
             self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
             taskMgr.do_method_later(2, wait, 'wait for room')
         wait(None)
@@ -79,16 +81,26 @@ class ConnectionManager(DirectObject):
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
-    def send_flag_trigger(self, player, timestamp: int):
+    def send_flag_trigger(self, player):
         self.network_transfer_builder.add("type", Messages.FLAG_PICKED)
-        self.network_transfer_builder.add("timestamp", timestamp)
         self.network_transfer_builder.add("player", player)
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
 
-    def send_flag_drop_trigger(self, player, timestamp: int):
+    def send_flag_drop_trigger(self, player):
         self.network_transfer_builder.add("type", Messages.FLAG_DROPPED)
-        self.network_transfer_builder.add("timestamp", timestamp)
+        self.network_transfer_builder.add("player", player)
+        self.network_transfer_builder.set_destination(self.server_address)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+    def send_bolt_pickup_trigger(self, bolt_id: str):
+        self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_BOLT)
+        self.network_transfer_builder.add("bolt_id", bolt_id)
+        self.network_transfer_builder.set_destination(self.server_address)
+        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+
+    def send_freeze_trigger(self, player):
+        self.network_transfer_builder.add("type", Messages.FREEZE_PLAYER)
         self.network_transfer_builder.add("player", player)
         self.network_transfer_builder.set_destination(self.server_address)
         self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
@@ -102,6 +114,9 @@ class ConnectionManager(DirectObject):
                 game_config.restore(transfer)
                 self.ready_handler(game_config)
                 self.room_found = True
+            elif type == Messages.FIND_ROOM_FAIL:
+                print("[INFO] Server is full - 4/4 players. Access denied.")
+                sys.exit()
             elif type == Messages.GLOBAL_STATE:
                 self.game_state_change_subscriber(transfer)
             elif type == Messages.NEW_PLAYER:
@@ -117,6 +132,13 @@ class ConnectionManager(DirectObject):
                 self.client.player_flag_drop(transfer.get("player"))
             elif type == Messages.GAME_END:
                 print("[INFO] Game end")
-                self.game_end_subscriber(str(transfer.get("id")))
+                self.game_end_subscriber(str(transfer.get("id")), transfer.get("username"))
+            elif type == Messages.BOLTS_SETUP:
+                self.client.setup_bolts(transfer.get("current_bolts"))
+            elif type == Messages.BOLTS_UPDATE:
+                self.client.update_bolts(transfer.get("old_bolt"), transfer.get("new_bolt"))
+            elif type == Messages.RESUME_PLAYER:
+                print("[INFO] Energy recharged")
+                self.client.game_manager.resume_player()
 
         return task.cont
