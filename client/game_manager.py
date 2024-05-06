@@ -134,7 +134,8 @@ class GameManager:
             self.update_main_player_position()
         self.interpolate_other_players_positions()
         self.update_bullets()
-        self.lose_energy()
+        if not self.waiting_screen.is_displayed:
+            self.lose_energy()
 
         return task.cont
 
