@@ -1,10 +1,20 @@
 from abc import abstractmethod
-from enum import IntEnum, auto
-from typing import Literal, Protocol, TypeVar, NamedTuple, Union
+from enum import IntEnum, auto, StrEnum
+from typing import Literal, Protocol, TypeVar, NamedTuple, Union, Any
 
 Direction = Literal["n", "e", "s", "w"]
 
-Input = Literal["+forward", "-forward", "+right", "-right", "+left", "-left", "+backward", "-backward"]
+
+class Input(StrEnum):
+    PLUS_FORWARD = "+forward"
+    MINUS_FORWARD = "-forward"
+    PLUS_RIGHT = "+right"
+    MINUS_RIGHT = "-right"
+    PLUS_LEFT = "+left"
+    MINUS_LEFT = "-left"
+    PLUS_BACKWARD = "+backward"
+    MINUS_BACKWARD = "-backward"
+
 
 Item = Literal["flag", "empty"]
 
@@ -35,6 +45,7 @@ class Messages(IntEnum):
     GAME_END = auto()
     FREEZE_PLAYER = auto()
     RESUME_PLAYER = auto()
+
 
 class TimeStep(NamedTuple):
     begin: float

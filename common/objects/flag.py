@@ -1,12 +1,14 @@
+from typing import Union
 from panda3d.core import Vec3, CollisionSphere
 
 from common.collision.collision_object import CollisionObject
 from common.config import MAP_SIZE
+from common.player.player_controller import PlayerController
 
 
 class Flag(CollisionObject):
     def __init__(self, game, player=None):
-        self.player = player
+        self.player: Union[PlayerController, None] = player
         self.position = Vec3(MAP_SIZE - 2, MAP_SIZE - 2, 0)
         self.model = game.loader.load_model("../common/assets/models/flag.glb")
         self.model.setPos(self.position)
@@ -16,6 +18,9 @@ class Flag(CollisionObject):
         collision_spheres[0].set_tangible(False)
 
         super().__init__(self.model, "flag", collision_spheres)
+
+    def get_player_id(self) -> Union[str, None]:
+        return self.player.get_id() if self.player else None
 
     def taken(self):
         return bool(self.player)

@@ -9,6 +9,7 @@ class NetworkTransfer:
         self.payload: bytes = b""
         self.destination: Address = (None, None)
         self.source: Address = (None, None)
+        self.retransmission_count: int = 1
 
     def get(self, key: str) -> Union[str, int]:
         return self.data[key]
