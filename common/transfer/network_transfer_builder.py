@@ -25,7 +25,7 @@ class NetworkTransferBuilder(SupportsBuildingNetworkTransfer):
     def set_source(self, address: Address):
         self.source = address
 
-    def encode(self, reset=True) -> NetworkTransfer:
+    def encode(self, reset=True, retransmit=1) -> NetworkTransfer:
         transfer = NetworkTransfer()
         transfer.payload = pickle.dumps(self.data)
         transfer.destination = self.destination

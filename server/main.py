@@ -13,7 +13,7 @@ from direct.task.TaskManagerGlobal import taskMgr
 from panda3d.core import Vec3, ClockObject
 
 from common.collision.setup import setup_collisions
-from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE, BULLET_ENERGY
+from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
 from common.objects.bolt_factory import BoltFactory
@@ -26,13 +26,22 @@ from common.tiles.tile_node_path_factory import TileNodePathFactory
 from common.connection.udp_connection_thread import UDPConnectionThread
 from common.transfer.network_transfer_builder import NetworkTransferBuilder
 from common.typings import Messages, Address, TimeStep
+from server.chain_of_responsibility.bolt_handler import BoltHandler
+from server.chain_of_responsibility.bullet_handler import BulletHandler
+from server.chain_of_responsibility.existing_client_handler import ExistingClientHandler
+from server.chain_of_responsibility.flag_handler import FlagHandler
+from server.chain_of_responsibility.freeze_player_handler import FreezePlayerHandler
+from server.chain_of_responsibility.hello_handler import HelloHandler
+from server.chain_of_responsibility.movement_handler import MovementHandler
+from server.chain_of_responsibility.new_client_handler import NewClientHandler
 from server.wfc.wfc_starter import start_wfc
 from server.accounts.db_manager import DBManager
+from server.typings import HandlerContext, ServerGame, SupportsServerOperationsChain
 
 sys.path.append("../common")
 
 
-class Server(ShowBase):
+class Server(ShowBase, ServerGame):
     def __init__(self, port, expected_players, view=False):
         if view:
             # show window for debug purposes, slows down everything
@@ -62,6 +71,7 @@ class Server(ShowBase):
         self.bullets_since_last_update: list[Bullet] = []
         self.flag = Flag(self)
         self.game_won_by: Union[None, PlayerController] = None
+        self.request_handlers_chain = self.__setup_chain_of_responsibility()
         self.__setup_collisions()
         print("[INFO] Map generated")
         if self.view:
@@ -82,6 +92,7 @@ class Server(ShowBase):
         print("  --   Generating new map")
         self.season = random.choices([0, 1], weights=[5, 5], k=1)[0]
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
+        self.request_handlers_chain = self.__setup_chain_of_responsibility()
         print("  --   Starting")
         self.__setup_collisions()
         self.game_won_by = None
@@ -92,53 +103,62 @@ class Server(ShowBase):
 
     def listen(self):
         self.udp_connection.start()
-        taskMgr.add(self.handle_clients, "handle client messages")
+        taskMgr.add(self.__handle_clients, "handle client messages")
         taskMgr.add(self.handle_game_state, "broadcast global state")
-        taskMgr.add(self.update_bullets, "update bullets")
-        self.accept("bullet-into-wall", self.handle_bullet_hit)
-        self.accept("player-damage", self.handle_player_damage)
+        taskMgr.add(self.__update_bullets, "update bullets")
+        self.accept("bullet-into-wall", self.__handle_bullet_hit)
+        self.accept("player-damage", self.__handle_player_damage)
         print(f"[INFO] Listening on port {self.port}")
 
-    def handle_clients(self, task):
+    def get_active_players(self) -> dict[Address, PlayerController]:
+        return self.active_players
+
+    def add_projectile_to_process(self, bullet: Bullet):
+        self.projectiles_to_process.append(bullet)
+
+    def get_game_config(self, player_id: str) -> GameConfig:
+        return GameConfig(
+            self.tiles,
+            self.expected_players,
+            player_id,
+            [player.get_state() for player in self.active_players.values()],
+            MAP_SIZE,
+            self.season
+        )
+
+    def __handle_clients(self, task):
         if self.game_won_by is not None:
             return
 
+        known_addresses = list(self.active_players.keys())
         for transfer in self.udp_connection.get_queued_transfers():
-            type = transfer.get("type")
-            if type == Messages.HELLO:
-                print("[INFO] New client")
-            elif type == Messages.FIND_ROOM:
-                print("[INFO] Room requested")
-                self.__find_room_for(transfer.get_source(), transfer.get("username"))
-            elif type == Messages.UPDATE_INPUT:
-                if transfer.get_source() in self.active_players:
-                    print("[INFO] Update input")
-                    self.active_players[transfer.get_source()].update_input(transfer.get("input"))
-            elif type == Messages.FIRE_GUN:
-                if transfer.get_source() in self.active_players:
-                    player = self.active_players[transfer.get_source()]
-                    trigger_timestamp = transfer.get("timestamp")
-                    if player.state.energy < BULLET_ENERGY:
-                        return
-                    player.lose_energy(BULLET_ENERGY)
-                    self.shoot_bullet(
-                        p3d.Vec3(float(transfer.get('x')), float(transfer.get('y')), 0),
-                        player,
-                        trigger_timestamp
-                    )
-            elif type == Messages.FLAG_PICKED:
-                print("[INFO] Flag requested by player " + transfer.get("player"))
-                self.handle_flag_pickup(transfer.get_source(), transfer.get("player"))
-            elif type == Messages.FLAG_DROPPED:
-                print("[INFO] Flag drop requested by player " + transfer.get("player"))
-                self.handle_flag_drop(transfer.get_source(), transfer.get("player"))
-            elif type == Messages.PLAYER_PICKED_BOLT:
-                self.update_bolts(transfer.get("bolt_id"))
-            elif type == Messages.FREEZE_PLAYER:
-                self.freeze_player(transfer.get("player"))
+            message = Messages(int(transfer.get("type")))
+            response_transfers = self.request_handlers_chain.handle(
+                HandlerContext(message, transfer, known_addresses)
+            )
+            for response_transfer in response_transfers:
+                self.udp_connection.enqueue_transfer(response_transfer)
         return task.cont
 
-    def update_bullets(self, task):
+    def __setup_chain_of_responsibility(self) -> SupportsServerOperationsChain:
+        handlers: list[SupportsServerOperationsChain]
+        handlers = [
+            HelloHandler(),
+            NewClientHandler(self, self.__add_new_player, self.flag, self.bolt_factory, self.db_manager),
+            ExistingClientHandler(self),
+            FreezePlayerHandler(self.freeze_player),
+            BulletHandler(self.bullet_factory, self),
+            BoltHandler(self.bolt_factory),
+            FlagHandler(self.flag, self),
+            MovementHandler(self)
+        ]
+
+        for i in range(1, len(handlers)):
+            handlers[i].set_next(handlers[i - 1])
+
+        return handlers[-1]
+
+    def __update_bullets(self, task):
         if self.game_won_by is not None:
             return
 
@@ -152,17 +172,7 @@ class Server(ShowBase):
             self.bullets_since_last_update.append(b)
         return task.cont
 
-    def shoot_bullet(self, direction, player, timestamp) -> p3d.Vec3:
-        bullet = self.bullet_factory.get_one(
-            (player.get_state().get_position() + p3d.Vec3(0, 0, 0.5)
-             + direction * 0.5),
-            direction,
-            player.get_id()
-        )
-        bullet.timestamp = timestamp
-        self.projectiles_to_process.append(bullet)
-
-    def handle_bullet_hit(self, entry):
+    def __handle_bullet_hit(self, entry):
         if "wall" in entry.get_into_node_path().get_name():
             bullet_id = entry.get_from_node_path().get_tag('id')
             self.bullets = [b for b in self.bullets if b.bullet_id != bullet_id]
@@ -170,7 +180,7 @@ class Server(ShowBase):
         else:
             messenger.send("player-damage", [entry.get_into_node_path().get_tag('id')])
 
-    def handle_player_damage(self, data):
+    def __handle_player_damage(self, data):
         player_id = data[0]
         self.handle_flag_drop(self.get_address_by_id(player_id), player_id)
         print("player {} was hit".format(player_id))
@@ -206,76 +216,6 @@ class Server(ShowBase):
             timestamp_sec = self.game_state_history[i].step.end
             i += 1
         pass
-
-    def __find_room_for(self, address, username):
-        if len(self.active_players) >= 4:
-            self.network_transfer_builder.set_destination(address)
-            self.network_transfer_builder.add("type", Messages.FIND_ROOM_FAIL)
-            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-            return
-
-        new_player = True
-        if address in self.active_players.keys():
-            new_player = False
-            player_controller = self.active_players[address]
-            print(f"  --   Resending to player {player_controller.get_id()}")
-            self.network_transfer_builder.add("id", player_controller.get_id())
-        else:
-            print("  --   Adding new player")
-            player_controller = self.__add_new_player(address, str(self.next_player_id), username)
-            self.network_transfer_builder.add("id", str(self.next_player_id))
-            self.next_player_id += 1
-        self.network_transfer_builder.set_destination(address)
-        self.network_transfer_builder.add("type", Messages.FIND_ROOM_OK)
-        game_config = GameConfig(
-            self.tiles,
-            self.expected_players,
-            player_controller.get_id(),
-            [player.get_state() for player in self.active_players.values()],
-            MAP_SIZE,
-            self.season
-        )
-        # fill game_config
-        game_config.transfer(self.network_transfer_builder)
-        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-
-        if not new_player:
-            return
-
-        # respond with data and notify other players
-        self.broadcast_new_player(
-            player_controller.get_id(),
-            player_controller.get_state()
-        )
-        self.update_flag_state(address)
-        self.log_in(username)
-        for _ in range(5):
-            self.setup_bolts(address)
-            time.sleep(0.2)
-
-    def handle_flag_pickup(self, player_address, player):
-        if not self.flag.taken():
-            print("[INFO] Flag picked by player " + player)
-            addresses = self.active_players.keys()
-            for address in addresses:
-                self.network_transfer_builder.set_destination(address)
-                self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_FLAG)
-                self.network_transfer_builder.add("player", player)
-
-                self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-            self.player_flag_pickup(player_address)
-
-    def handle_flag_drop(self, player_address, player):
-        if self.flag.taken() and player == self.flag.player.get_id():
-            print("[INFO] Flag dropped by player " + player)
-            addresses = self.active_players.keys()
-            for address in addresses:
-                self.network_transfer_builder.set_destination(address)
-                self.network_transfer_builder.add("type", Messages.PLAYER_DROPPED_FLAG)
-                self.network_transfer_builder.add("player", player)
-
-                self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-            self.player_flag_drop(player_address)
 
     def handle_game_state(self, task):
         if self.game_won_by is not None:
@@ -327,28 +267,10 @@ class Server(ShowBase):
             new_bullets_metadata += f"{' '.join([str(md) for md in b.get_metadata()])},"
         return new_bullets_metadata[:-1]
 
-    def broadcast_player_disconnected(self, task):
-        # todo: client is active as long as it sends KEEP_ALIVE from time to time
-        #       if it haven't send anything for a minute, then remove it and notify others
-        pass
-
-    def broadcast_new_player(self, player_id, state):
-        print("[INFO] Notifying players about new player")
-        self.network_transfer_builder.add("type", Messages.NEW_PLAYER)
-        self.network_transfer_builder.add("id", player_id)
-        state.transfer(self.network_transfer_builder)
-        for address, player in self.active_players.items():
-            if player.get_id() == player_id:
-                continue
-            self.network_transfer_builder.set_destination(address)
-            self.udp_connection.enqueue_transfer(
-                self.network_transfer_builder.encode(reset=False)
-            )
-        # reset=False left previous builder state, clean it up after pinging every player
-        self.network_transfer_builder.cleanup()
-
-    def __add_new_player(self, address: Address, id: str, username: str) -> PlayerController:
-        new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), id, username)
+    def __add_new_player(self, address: Address, username: str) -> str:
+        new_player_id = self.next_player_id
+        self.next_player_id += 1
+        new_player_state = PlayerStateDiff(TimeStep(begin=0, end=time.time()), str(new_player_id), username)
         new_player_state.set_position((self.player_positions[int(new_player_state.id)]))
         model = self.node_path_factory.get_player_model(new_player_state.id)
         model.reparent_to(self.render)
@@ -357,22 +279,19 @@ class Server(ShowBase):
         new_player_controller.sync_position()
 
         player_collider = new_player_controller.colliders[0]
-        self.cTrav.addCollider(player_collider, self.pusher)
-        self.pusher.addCollider(player_collider, player_collider)
+        self.cTrav.add_collider(player_collider, self.pusher)
+        self.pusher.add_collider(player_collider, player_collider)
         if self.view:
             player_collider.show()
 
         taskMgr.add(new_player_controller.task_update_position, "update player position")
-        self.accept(f"bullet-into-player{id}", self.handle_bullet_hit)
+        self.accept(f"bullet-into-player{new_player_id}", self.__handle_bullet_hit)
         self.accept(
-            f"player{id}-into-safe_space{id}",
+            f"player{new_player_id}-into-safe_space{new_player_id}",
             self.__add_player_into_safe_space_handler(new_player_controller)
         )
 
-        return new_player_controller
-
-    def log_in(self, username):
-        self.db_manager.login(username)
+        return new_player_controller.get_id()
 
     def __setup_collisions(self):
         setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
@@ -393,14 +312,6 @@ class Server(ShowBase):
         for c in self.tile_colliders:
             c.show()
 
-    def player_flag_pickup(self, address):
-        player = self.active_players[address]
-        self.flag.get_picked(player)
-
-    def player_flag_drop(self, address):
-        player = self.active_players[address]
-        self.flag.get_dropped(player)
-
     def get_address_by_id(self, player_id):
         for address, player_controller in self.active_players.items():
             if player_controller.get_id() == player_id:
@@ -418,7 +329,7 @@ class Server(ShowBase):
 
     def __finish_game(self):
         for i in range(5):
-            print(f"[INFO] Broadcasting game end {i+1}th time")
+            print(f"[INFO] Broadcasting game end {i + 1}th time")
             self.network_transfer_builder.add("type", Messages.GAME_END)
             self.network_transfer_builder.add("id", self.game_won_by.get_id())
             self.network_transfer_builder.add("username", self.game_won_by.get_username())
@@ -445,38 +356,28 @@ class Server(ShowBase):
         time.sleep(0.5)
         self.reset_server()
 
-    def update_flag_state(self, address):
-        if self.flag.taken():
-            self.network_transfer_builder.set_destination(address)
-            self.network_transfer_builder.add("type", Messages.PLAYER_PICKED_FLAG)
-            self.network_transfer_builder.add("player", self.flag.player.get_id())
-
-            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-
-    def update_bolts(self, bolt_id):
-        self.bolt_factory.remove_bolt(bolt_id)
-        new_bolt = self.bolt_factory.add_bolt()
-
-        for address, player_controller in self.active_players.items():
-            self.network_transfer_builder.set_destination(address)
-            self.network_transfer_builder.add("type", Messages.BOLTS_UPDATE)
-            self.network_transfer_builder.add("old_bolt", bolt_id)
-            self.network_transfer_builder.add("new_bolt", new_bolt)
-            self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-
-    def setup_bolts(self, address):
-        self.network_transfer_builder.set_destination(address)
-        self.network_transfer_builder.add("type", Messages.BOLTS_SETUP)
-        self.network_transfer_builder.add("current_bolts", self.bolt_factory.dump_bolts())
-        self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
-
-    def freeze_player(self, player_id):
-        address = self.get_address_by_id(player_id)
+    def freeze_player(self, address: Address):
         if address in self.active_players.keys():
             player = self.active_players[address]
             player.freeze()
-            self.handle_flag_drop(address, player_id)
+            self.handle_flag_drop(address, player.get_id())
             taskMgr.do_method_later(4, lambda _: self.resume_player(address, player), "enable movement")
+
+    def handle_flag_drop(self, player_address, player):
+        if self.flag.taken() and player == self.flag.player.get_id():
+            print("[INFO] Flag dropped by player " + player)
+            addresses = self.active_players.keys()
+            for address in addresses:
+                self.network_transfer_builder.set_destination(address)
+                self.network_transfer_builder.add("type", Messages.PLAYER_DROPPED_FLAG)
+                self.network_transfer_builder.add("player", player)
+
+                self.udp_connection.enqueue_transfer(self.network_transfer_builder.encode())
+            self.player_flag_drop(player_address)
+
+    def player_flag_drop(self, address):
+        player = self.active_players[address]
+        self.flag.get_dropped(player)
 
     def resume_player(self, address, player):
         player.resume()
@@ -490,7 +391,7 @@ if __name__ == "__main__":
         print("Użycie: python -m server.main <liczba graczy>")
         sys.exit(1)
     expected_players = int(sys.argv[1])
-    #server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
+    # server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
     server = Server(SERVER_PORT, expected_players)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)

@@ -9,6 +9,7 @@ from common.transfer.network_transfer_builder import NetworkTransferBuilder
 
 class UDPConnectionThread(Thread):
     """ Thread class comes from panda3d - beware incompatibilities! """
+
     def __init__(self, addr, port, server=False):
         super().__init__()
         self.addr = addr
@@ -62,3 +63,8 @@ class UDPConnectionThread(Thread):
                 transfer = self.outgoing.get()
                 self.lock.release()
                 self.udp_socket.sendto(transfer.get_payload(), transfer.get_destination())
+                if transfer.retransmission_count > 1:
+                    transfer.retransmission_count -= 1
+                    self.lock.acquire()
+                    self.outgoing.put(transfer)
+                    self.lock.release()
