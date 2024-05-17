@@ -15,30 +15,30 @@ class CollisionManager:
         self.pusher = p3d.CollisionHandlerPusher()
         self.pusher.setHorizontal(True)
         self.pusher.add_in_pattern('%fn-into-%in')
-        self.tile_colliders = []
-        self.safe_spaces = []
+        self.__tile_colliders = []
+        self.__safe_spaces = []
 
     def setup_collisions(self, tiles, map_size, season):
-        self.setup_traverser()
-        self.setup_safe_spaces(map_size)
-        self.setup_tile_colliders(tiles, season)
+        self.__setup_traverser()
+        self.__setup_safe_spaces(map_size)
+        self.__setup_tile_colliders(tiles, season)
         return self.cTrav, self.pusher
 
-    def setup_traverser(self):
+    def __setup_traverser(self):
         self.cTrav.add_collider(self.flag_collider, self.pusher)
         for bullet in self.bullet_factory.bullets:
             self.cTrav.add_collider(bullet.colliders[0], self.pusher)
 
-    def setup_safe_spaces(self, map_size):
+    def __setup_safe_spaces(self, map_size):
         for i in range(4):
-            self.safe_spaces.append(SafeSpace(self.render, i, map_size, self.loader))
+            self.__safe_spaces.append(SafeSpace(self.render, i, map_size, self.loader))
 
-    def setup_tile_colliders(self, tiles, season):
+    def __setup_tile_colliders(self, tiles, season):
         tiles_parent = NodePath("tiles")
         for tile_data in tiles:
             tile = create_new_tile(self.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"], season)
             tile.reparent_to(tiles_parent)
-            self.tile_colliders.append(
+            self.__tile_colliders.append(
                 CollisionObject(
                     tile,
                     "wall" if "wall" in tile_data["node_path"] else tile_data["node_path"],
@@ -55,4 +55,4 @@ class CollisionManager:
             player_collider.show()
 
     def get_tile_colliders(self):
-        return self.tile_colliders
+        return self.__tile_colliders
