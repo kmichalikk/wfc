@@ -40,9 +40,9 @@ class Game(ShowBase):
         self.connection_manager = ConnectionManager((SERVER_ADDRESS, SERVER_PORT), self)
         self.login_screen = LoginScreen(self.loader, self.start)
 
+        self.flag = Flag(self)
         # initialize GameManager, don't start the game until self.ready
         self.game_manager = GameManager(self, TileNodePathFactory(self.loader))
-        self.flag = Flag(self)
 
         self.bolts_set_up = False
         self.bolt_factory = BoltFactory(self.loader, self.render)

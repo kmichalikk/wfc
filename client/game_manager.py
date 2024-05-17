@@ -14,7 +14,7 @@ from client.screens.player_stats import PlayerStats
 from client.screens.end_screen import EndScreen
 from client.screens.waiting_screen import WaitingScreen
 
-from common.collision.setup import setup_collisions
+from common.collision.collision_manager import CollisionManager
 from common.config import TIME_STEP
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
@@ -69,6 +69,9 @@ class GameManager:
         self.waiting_screen = WaitingScreen(game.loader)
         self.end_screen = EndScreen(game.loader)
 
+        self.collision_manager = CollisionManager(self.game.render, self.game.loader, self.game.flag.colliders[0],
+                                                  self.bullet_factory)
+
     def setup_player(self, player_state: PlayerStateDiff):
         player_node_path = self.node_path_factory.get_player_model(player_state.id)
         player_node_path.reparent_to(self.game.render)
@@ -102,8 +105,7 @@ class GameManager:
 
         # add collider to main player controller
         player_collider = player.colliders[0]
-        self.game.cTrav.addCollider(player_collider, self.game.pusher)
-        self.game.pusher.addCollider(player_collider, player_collider)
+        self.collision_manager.setup_player_collision(player_collider)
 
         # add another controller for the player that doesn't directly respond to input
         # but is set to server state as it arrives i.e. every 3 frames and updated afterward
@@ -329,7 +331,7 @@ class GameManager:
 
         game.season = season
 
-        setup_collisions(game, tiles, map_size, self.bullet_factory)
+        self.game.cTrav, self.game.pusher = self.collision_manager.setup_collisions(tiles, map_size, season)
 
         def update_camera(task):
             if self.main_player is None:

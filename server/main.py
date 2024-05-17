@@ -12,7 +12,7 @@ from direct.showbase.ShowBaseGlobal import globalClock
 from direct.task.TaskManagerGlobal import taskMgr
 from panda3d.core import Vec3, ClockObject
 
-from common.collision.setup import setup_collisions
+from common.collision.collision_manager import CollisionManager
 from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
@@ -72,7 +72,9 @@ class Server(ShowBase, ServerGame):
         self.flag = Flag(self)
         self.game_won_by: Union[None, PlayerController] = None
         self.request_handlers_chain = self.__setup_chain_of_responsibility()
-        self.__setup_collisions()
+        self.collision_manager = CollisionManager(self.render, self.loader, self.flag.colliders[0],
+                                                  self.bullet_factory)
+        self.cTrav, self.pusher = self.collision_manager.setup_collisions(self.tiles, MAP_SIZE, self.season)
         print("[INFO] Map generated")
         if self.view:
             self.__setup_view()
@@ -94,7 +96,7 @@ class Server(ShowBase, ServerGame):
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.request_handlers_chain = self.__setup_chain_of_responsibility()
         print("  --   Starting")
-        self.__setup_collisions()
+        self.cTrav, self.pusher = self.collision_manager.setup_collisions(self.tiles, MAP_SIZE, self.season)
         self.game_won_by = None
         if self.view:
             self.camera.reparent_to(self.render)
@@ -279,10 +281,7 @@ class Server(ShowBase, ServerGame):
         new_player_controller.sync_position()
 
         player_collider = new_player_controller.colliders[0]
-        self.cTrav.add_collider(player_collider, self.pusher)
-        self.pusher.add_collider(player_collider, player_collider)
-        if self.view:
-            player_collider.show()
+        self.collision_manager.setup_player_collision(player_collider, self.view)
 
         taskMgr.add(new_player_controller.task_update_position, "update player position")
         self.accept(f"bullet-into-player{new_player_id}", self.__handle_bullet_hit)
@@ -293,10 +292,6 @@ class Server(ShowBase, ServerGame):
 
         return new_player_controller.get_id()
 
-    def __setup_collisions(self):
-        setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
-
-    # to be called after __setup_collisions()
     def __setup_view(self):
         self.disableMouse()
 
@@ -309,7 +304,7 @@ class Server(ShowBase, ServerGame):
         self.render.set_light(point_light_node)
         self.camera.set_pos(Vec3(MAP_SIZE, MAP_SIZE, 5 * MAP_SIZE))
         self.camera.look_at(Vec3(MAP_SIZE, MAP_SIZE, 0))
-        for c in self.tile_colliders:
+        for c in self.collision_manager.get_tile_colliders():
             c.show()
 
     def get_address_by_id(self, player_id):
@@ -391,8 +386,8 @@ if __name__ == "__main__":
         print("Użycie: python -m server.main <liczba graczy>")
         sys.exit(1)
     expected_players = int(sys.argv[1])
-    # server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
-    server = Server(SERVER_PORT, expected_players)
+    server = Server(SERVER_PORT, 1, True)  # this slows down the whole simulation, debug only
+    #server = Server(SERVER_PORT, expected_players)
     globalClock.setMode(ClockObject.MLimited)
     globalClock.setFrameRate(FRAMERATE)
     server.listen()
