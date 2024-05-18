@@ -17,19 +17,14 @@ class CollisionBuilder:
         self.__tile_colliders = []
         self.__safe_spaces = []
 
-    def add_collisions(self, tiles, map_size, season, flag, bullets):
-        self.add_colliders_from(flag)
-        for bullet in bullets:
-            self.add_colliders_from(bullet)
-        self.__create_safe_spaces(map_size)
-        self.__create_tile_colliders(tiles, season)
+    def get_collision_system(self):
         return self.cTrav, self.pusher
 
-    def __create_safe_spaces(self, map_size):
+    def add_safe_spaces(self, map_size):
         for i in range(4):
             self.__safe_spaces.append(SafeSpace(self.render, i, map_size, self.loader))
 
-    def __create_tile_colliders(self, tiles, season):
+    def add_tile_colliders(self, tiles, season):
         tiles_parent = NodePath("tiles")
         for tile_data in tiles:
             tile = create_new_tile(self.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"], season)

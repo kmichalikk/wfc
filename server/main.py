@@ -73,8 +73,7 @@ class Server(ShowBase, ServerGame):
         self.game_won_by: Union[None, PlayerController] = None
         self.request_handlers_chain = self.__setup_chain_of_responsibility()
         self.collision_builder = CollisionBuilder(self.render, self.loader)
-        self.cTrav, self.pusher = self.collision_builder.add_collisions(self.tiles, MAP_SIZE, self.season, self.flag,
-                                                                        self.bullet_factory.bullets)
+        self.build_collisions()
         print("[INFO] Map generated")
         if self.view:
             self.__setup_view()
@@ -96,8 +95,7 @@ class Server(ShowBase, ServerGame):
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.request_handlers_chain = self.__setup_chain_of_responsibility()
         print("  --   Starting")
-        self.cTrav, self.pusher = self.collision_builder.add_collisions(self.tiles, MAP_SIZE, self.season, self.flag,
-                                                                        self.bullet_factory.bullets)
+        self.build_collisions()
         self.game_won_by = None
         if self.view:
             self.camera.reparent_to(self.render)
@@ -160,6 +158,13 @@ class Server(ShowBase, ServerGame):
             handlers[i].set_next(handlers[i - 1])
 
         return handlers[-1]
+
+    def build_collisions(self):
+        self.collision_builder.add_colliders_from(self.flag)
+        self.collision_builder.add_colliders_from(self.bullet_factory.bullets)
+        self.collision_builder.add_tile_colliders(self.tiles, self.season)
+        self.collision_builder.add_safe_spaces(MAP_SIZE)
+        self.cTrav, self.pusher = self.collision_builder.get_collision_system()
 
     def __update_bullets(self, task):
         if self.game_won_by is not None:
