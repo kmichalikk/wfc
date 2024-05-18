@@ -51,16 +51,3 @@ collision_shapes = {
 
     "empty_1": []
 }
-
-
-def get_water_borders(key: str):
-    return [copy(border) for border in water_borders[key]]
-
-
-water_borders = {
-    "water_concave_1": [CollisionBox(Point3(-0.65, 0.65, 0.5), 0.35, 0.35, 0.5)],
-    "water_convex_1": [CollisionBox(Point3(-0.65, 0, 0.5), 0.35, 1, 0.5),
-                       CollisionBox(Point3(0, 0.65, 0.5), 1, 0.35, 0.5)],
-    "water_extend_1": [CollisionBox(Point3(0, 0.65, 0.5), 1, 0.35, 0.5)],
-    "water_full_1": []
-}

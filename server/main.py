@@ -12,7 +12,7 @@ from direct.showbase.ShowBaseGlobal import globalClock
 from direct.task.TaskManagerGlobal import taskMgr
 from panda3d.core import Vec3, ClockObject
 
-from common.collision.setup import setup_collisions
+from common.collision.collision_builder import CollisionBuilder
 from common.config import FRAMERATE, MAP_SIZE, SERVER_PORT, INV_TICK_RATE
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
@@ -72,7 +72,8 @@ class Server(ShowBase, ServerGame):
         self.flag = Flag(self)
         self.game_won_by: Union[None, PlayerController] = None
         self.request_handlers_chain = self.__setup_chain_of_responsibility()
-        self.__setup_collisions()
+        self.collision_builder = CollisionBuilder(self.render, self.loader)
+        self.build_collisions()
         print("[INFO] Map generated")
         if self.view:
             self.__setup_view()
@@ -94,7 +95,7 @@ class Server(ShowBase, ServerGame):
         self.tiles, self.player_positions = start_wfc(MAP_SIZE, 4)
         self.request_handlers_chain = self.__setup_chain_of_responsibility()
         print("  --   Starting")
-        self.__setup_collisions()
+        self.build_collisions()
         self.game_won_by = None
         if self.view:
             self.camera.reparent_to(self.render)
@@ -157,6 +158,14 @@ class Server(ShowBase, ServerGame):
             handlers[i].set_next(handlers[i - 1])
 
         return handlers[-1]
+
+    def build_collisions(self):
+        self.collision_builder.add_colliders_from(self.flag)
+        for bullet in self.bullet_factory.bullets:
+            self.collision_builder.add_colliders_from(bullet)
+        self.collision_builder.add_tile_colliders(self.tiles, self.season)
+        self.collision_builder.add_safe_spaces(MAP_SIZE)
+        self.cTrav, self.pusher = self.collision_builder.get_collision_system()
 
     def __update_bullets(self, task):
         if self.game_won_by is not None:
@@ -278,11 +287,7 @@ class Server(ShowBase, ServerGame):
         self.active_players[address] = new_player_controller
         new_player_controller.sync_position()
 
-        player_collider = new_player_controller.colliders[0]
-        self.cTrav.add_collider(player_collider, self.pusher)
-        self.pusher.add_collider(player_collider, player_collider)
-        if self.view:
-            player_collider.show()
+        self.collision_builder.add_colliders_from(new_player_controller, self.view)
 
         taskMgr.add(new_player_controller.task_update_position, "update player position")
         self.accept(f"bullet-into-player{new_player_id}", self.__handle_bullet_hit)
@@ -293,10 +298,6 @@ class Server(ShowBase, ServerGame):
 
         return new_player_controller.get_id()
 
-    def __setup_collisions(self):
-        setup_collisions(self, self.tiles, MAP_SIZE, self.bullet_factory)
-
-    # to be called after __setup_collisions()
     def __setup_view(self):
         self.disableMouse()
 
@@ -309,7 +310,7 @@ class Server(ShowBase, ServerGame):
         self.render.set_light(point_light_node)
         self.camera.set_pos(Vec3(MAP_SIZE, MAP_SIZE, 5 * MAP_SIZE))
         self.camera.look_at(Vec3(MAP_SIZE, MAP_SIZE, 0))
-        for c in self.tile_colliders:
+        for c in self.collision_builder.get_tile_colliders():
             c.show()
 
     def get_address_by_id(self, player_id):
