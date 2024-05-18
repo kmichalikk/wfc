@@ -17,17 +17,13 @@ from common.typings import Address, Messages
 class ConnectionManager(DirectObject):
     """ Proxy for UDP connection thread """
 
-    def __init__(self, server_address: Address, client):
+    def __init__(self, server_address: Address):
         super().__init__()
         self.__server_address = server_address
-        self.__client = client
 
         # set up class fields
         self.__network_transfer_builder = NetworkTransferBuilder()
         self.__ready_handler = lambda _: False
-        self.__game_state_change_subscriber = lambda _: False
-        self.__new_player_subscriber = lambda _: False
-        self.__game_end_subscriber: Callable[[str, str, int, int], None] = lambda a, b, c, d: None
 
         # initialize UDP thread
         self.__udp_connection = UDPConnectionThread(server_address[0], 0)
@@ -38,6 +34,7 @@ class ConnectionManager(DirectObject):
         self.__network_transfer_builder.set_destination(self.__server_address)
         self.__udp_connection.enqueue_transfer(self.__network_transfer_builder.encode())
         self.__message_handlers = self.__get_message_handlers()
+        self.__subscribers: dict[Messages, Callable[..., None]] = {}
 
         self.__room_found = False
 
@@ -60,14 +57,11 @@ class ConnectionManager(DirectObject):
 
         wait(None)
 
-    def subscribe_for_game_state_change(self, subscriber: Callable[[NetworkTransfer], None]):
-        self.__game_state_change_subscriber = subscriber
+    def on(self, message_type: Messages, handler: Callable[..., None]):
+        self.__subscribers[message_type] = handler
 
-    def subscribe_for_new_player(self, subscriber: Callable[[PlayerStateDiff], None]):
-        self.__new_player_subscriber = subscriber
-
-    def subscribe_for_game_end(self, subscriber: Callable[[str, str, int, int], None]):
-        self.__game_end_subscriber = subscriber
+    def dispatch(self, message_type: Messages, *args):
+        self.__subscribers[message_type](*args)
 
     def send_input_update(self, input: str):
         self.__network_transfer_builder.add("type", Messages.UPDATE_INPUT)
@@ -130,35 +124,35 @@ class ConnectionManager(DirectObject):
 
     def __handle_resume_player(self, _: NetworkTransfer):
         print("[INFO] Energy recharged")
-        self.__client.game_manager.resume_player()
+        self.dispatch(Messages.RESUME_PLAYER)
 
     def __handle_bolts_update(self, transfer: NetworkTransfer):
-        self.__client.update_bolts(transfer.get("old_bolt"), transfer.get("new_bolt"))
+        self.dispatch(Messages.BOLTS_UPDATE, transfer.get("old_bolt"), transfer.get("new_bolt"))
 
     def __handle_bolts_setup(self, transfer: NetworkTransfer):
-        self.__client.setup_bolts(transfer.get("current_bolts"))
+        self.dispatch(Messages.BOLTS_SETUP, transfer.get("current_bolts"))
 
     def __handle_game_end(self, transfer: NetworkTransfer):
         print("[INFO] Game end")
-        self.__game_end_subscriber(str(transfer.get("id")), transfer.get("username"),
-                                   int(transfer.get("wins")), int(transfer.get("losses")))
+        self.dispatch(Messages.GAME_END, str(transfer.get("id")), transfer.get("username"),
+                      int(transfer.get("wins")), int(transfer.get("losses")))
 
     def __handle_flag_drop(self, transfer: NetworkTransfer):
         print("[INFO] Flag dropped")
-        self.__client.player_flag_drop(transfer.get("player"))
+        self.dispatch(Messages.PLAYER_DROPPED_FLAG, transfer.get("player"))
 
     def __handle_flag_pickup(self, transfer: NetworkTransfer):
         print("[INFO] Flag picked")
-        self.__client.player_flag_pickup(transfer.get("player"))
+        self.dispatch(Messages.PLAYER_PICKED_FLAG, transfer.get("player"))
 
     def __handle_new_player(self, transfer: NetworkTransfer):
         print("[INFO] New player")
         player_state = PlayerStateDiff.empty(transfer.get("id"))
         player_state.restore(transfer)
-        self.__new_player_subscriber(player_state)
+        self.dispatch(Messages.NEW_PLAYER, player_state)
 
     def __handle_global_state(self, transfer: NetworkTransfer):
-        self.__game_state_change_subscriber(transfer)
+        self.dispatch(Messages.GLOBAL_STATE, transfer)
 
     def __handle_room_not_found(self, _: NetworkTransfer):
         print("[INFO] Server is full - 4/4 players. Access denied.")

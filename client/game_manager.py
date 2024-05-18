@@ -1,21 +1,15 @@
 import time
 from collections import deque
-
 import panda3d.core as p3d
-
 from typing import Union
-from common.config import MAP_SIZE, BULLET_ENERGY
-
-from direct.showbase import ShowBase
 from direct.task import Task
 
+from direct.task.TaskManagerGlobal import taskMgr
+from client.connection.connection_manager import ConnectionManager
+from client.game import Game
 from client.screens.player_stats import PlayerStats
-
-from client.screens.end_screen import EndScreen
-from client.screens.waiting_screen import WaitingScreen
-
+from common.config import MAP_SIZE, BULLET_ENERGY, TIME_STEP
 from common.collision.collision_builder import CollisionBuilder
-from common.config import TIME_STEP
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
 from common.objects.cloud_factory import CloudFactory
@@ -29,7 +23,7 @@ from common.typings import TimeStep
 
 
 class GameManager:
-    def __init__(self, game: ShowBase, node_path_factory: TileNodePathFactory):
+    def __init__(self, game: Game, node_path_factory: TileNodePathFactory, connection_manager: ConnectionManager):
         # all players by ids
         self.players: dict[str, PlayerController] = {}
 
@@ -63,16 +57,15 @@ class GameManager:
         self.bullets: list[Bullet] = []
 
         self.game = game
-        self.node_path_factory = node_path_factory
+        self.__game_has_started = False
+        self.__node_path_factory = node_path_factory
+        self.__connection_manager = connection_manager
         self.sync_tasks: dict[str, Task] = {}
-
-        self.waiting_screen = WaitingScreen(game.loader)
-        self.end_screen = EndScreen(game.loader)
 
         self.collision_builder = CollisionBuilder(self.game.render, self.game.loader)
 
     def setup_player(self, player_state: PlayerStateDiff):
-        player_node_path = self.node_path_factory.get_player_model(player_state.id)
+        player_node_path = self.__node_path_factory.get_player_model(player_state.id)
         player_node_path.reparent_to(self.game.render)
         player = PlayerController(
             player_node_path,
@@ -85,22 +78,32 @@ class GameManager:
         self.game_state.player_state[player_state.id] = player_state
         self.players[player_state.id] = player
         self.active_players += 1
-        if self.active_players >= self.game.expected_players:
-            self.waiting_screen.hide()
-            self.game.attach_input()
-        else:
-            self.waiting_screen.update(self.active_players, self.game.expected_players)
 
         return player
+
+    def get_active_players_count(self):
+        return self.active_players
+
+    def get_main_player_id(self):
+        return self.main_player.get_id() if self.main_player else ''
+
+    def get_main_player_username(self):
+        return self.main_player.get_username() if self.main_player else ''
+
+    def set_game_has_started(self):
+        self.__game_has_started = True
+
+    def has_game_started(self):
+        return self.__game_has_started
 
     def set_main_player(self, player: PlayerController):
         self.main_player = player
         self.game.taskMgr.add(self.sync_game_state, "sync game state", sort=1)
         self.game.taskMgr.add(self.game_state_snapshot, "store game state diffs", sort=2)
         self.game.accept("bullet-into-wall", self.handle_bullet_wall_hit)
-        self.game.accept('player' + player.get_id() + '-into-flag', self.game.handle_flag, [self.main_player])
+        self.game.accept('player' + player.get_id() + '-into-flag', self.__request_flag_pickup)
         for i in range(0, MAP_SIZE // 2):
-            self.game.accept('player' + player.get_id() + '-into-bolt' + str(i), self.game.pick_bolt)
+            self.game.accept('player' + player.get_id() + '-into-bolt' + str(i), self.__request_bolt_pickup)
 
         self.collision_builder.add_colliders_from(self.main_player)
 
@@ -109,7 +112,7 @@ class GameManager:
         # the difference in position of this object and main player controller
         # can be linearly interpolated to present smooth motion
         # while being "mostly" correct compared to server version
-        model = self.node_path_factory.get_player_model(player.get_id())
+        model = self.__node_path_factory.get_player_model(player.get_id())
         model.reparent_to(self.game.render)
         self.main_player_server_view = PlayerController(
             model,
@@ -133,7 +136,7 @@ class GameManager:
             self.update_main_player_position()
         self.interpolate_other_players_positions()
         self.update_bullets()
-        if not self.waiting_screen.is_displayed:
+        if self.__game_has_started:
             self.lose_energy()
 
         return task.cont
@@ -148,7 +151,7 @@ class GameManager:
                 self.main_player.freeze()
                 self.game.taskMgr.do_method_later(
                     0,
-                    lambda _: self.game.connection_manager.send_freeze_trigger(self.main_player.get_id()),
+                    lambda _: self.__connection_manager.send_freeze_trigger(self.main_player.get_id()),
                     "send input on next frame"
                 )
 
@@ -179,6 +182,26 @@ class GameManager:
             self.bullets = [b for b in self.bullets if b.bullet_id != bullet_id]
             self.bullet_factory.destroy(int(bullet_id))
 
+    def __request_flag_pickup(self, entry):
+        taskMgr.do_method_later(0, lambda _: self.__connection_manager.send_flag_trigger(self.get_main_player_id()),
+                                "send input on next frame")
+
+    def __request_bolt_pickup(self, entry):
+        bolt_id = entry.getIntoNodePath().node().getName()[-1]
+        player_id = entry.getFromNodePath().node().getName()[-1]
+        player = self.players[player_id]
+        player.charge_energy()
+        taskMgr.do_method_later(0, lambda _: self.__connection_manager.send_bolt_pickup_trigger(bolt_id),
+                                "send input on next frame")
+
+    def player_flag_pickup(self, player_id):
+        player = self.players[player_id]
+        self.game.pickup_flag(player)
+
+    def player_flag_drop(self, player_id):
+        player = self.players[player_id]
+        self.game.drop_flag(player)
+
     def apply_local_diffs(self, server_game_state: GameStateDiff):
         """
         Applies diffs between the time when server had built
@@ -187,15 +210,12 @@ class GameManager:
         while len(self.game_state_diffs) > 0:
             state = self.game_state_diffs.popleft()
             if state.step.end < server_game_state.step.end:
-                # print("[DIFF] Discarding", state.step)
                 continue
             else:
                 server_game_state.apply(state)
-                # print("[DIFF] Applying", state.step)
                 while len(self.game_state_diffs) > 0:
                     state = self.game_state_diffs.popleft()
                     server_game_state.apply(state)
-                    # print("[DIFF] Applying", state.step)
                 break
 
     def update_positions_and_reconciliate(self, server_game_state: GameStateDiff):
@@ -203,10 +223,10 @@ class GameManager:
         Perform client side reconciliation
         and smooth out player movement using interpolation
         """
-        # print("[DIFF] Server state at {} vs now {}, history len = {}".format(
-        #     server_game_state.step.end, time.time(), len(self.game_state_diffs)))
         for player in self.players.values():
             if player is not self.main_player:
+                if player.get_id() not in server_game_state.player_state.keys():
+                    continue
                 player.replace_state(server_game_state.player_state[player.get_id()])
                 player.sync_position()
             else:
@@ -305,28 +325,23 @@ class GameManager:
             bullet.update_position_by_dt(time.time() - state_update_time - self.other_players_delay)
             self.bullets.append(bullet)
 
-    def game_end_handler(self, winner_id, winner_username, wins, losses):
-        self.end_screen.display(self.main_player.get_id() == winner_id,
-                                winner_username, self.main_player.get_username(), wins, losses)
-
-    def setup_map(self, game, tiles, map_size, season):
-        game.disableMouse()
-        game.login_screen.hide()
+    def setup_map(self, tiles, map_size, season):
+        self.game.disableMouse()
 
         properties = p3d.WindowProperties()
         properties.set_size(800, 600)
-        game.win.request_properties(properties)
+        self.game.win.request_properties(properties)
 
         point_light = p3d.PointLight("light1")
-        point_light_node1 = game.render.attach_new_node(point_light)
+        point_light_node1 = self.game.render.attach_new_node(point_light)
         point_light_node1.set_pos(0, 0, 20)
         ambient = p3d.AmbientLight("light2")
         ambient.set_color((0.02, 0.02, 0.02, 1))
-        point_light_node2 = game.render.attach_new_node(ambient)
-        game.render.set_light(point_light_node1)
-        game.render.set_light(point_light_node2)
+        point_light_node2 = self.game.render.attach_new_node(ambient)
+        self.game.render.set_light(point_light_node1)
+        self.game.render.set_light(point_light_node2)
 
-        game.season = season
+        self.game.season = season
 
         self.collision_builder.add_colliders_from(self.game.flag)
         for bullet in self.bullet_factory.bullets:
@@ -338,15 +353,13 @@ class GameManager:
         def update_camera(task):
             if self.main_player is None:
                 return task.cont
-            game.camera.set_pos(self.main_player.model.getX(), self.main_player.model.getY() - 10, 15)
-            game.camera.look_at(self.main_player.model)
+            self.game.camera.set_pos(self.main_player.model.getX(), self.main_player.model.getY() - 10, 15)
+            self.game.camera.look_at(self.main_player.model)
             return task.cont
 
-        game.taskMgr.add(update_camera, "update camera")
+        self.game.taskMgr.add(update_camera, "update camera")
 
         for tile_data in tiles:
-            tile = create_new_tile(game.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"], season)
-            tile.reparent_to(game.render)
-
-        if self.active_players < self.game.expected_players:
-            self.waiting_screen.display()
+            tile = create_new_tile(self.game.loader, tile_data["node_path"], tile_data["pos"],
+                                   tile_data["heading"], season)
+            tile.reparent_to(self.game.render)
