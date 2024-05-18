@@ -329,7 +329,8 @@ class GameManager:
         game.season = season
 
         self.collision_builder.add_colliders_from(self.game.flag)
-        self.collision_builder.add_colliders_from(self.bullet_factory.bullets)
+        for bullet in self.bullet_factory.bullets:
+            self.collision_builder.add_colliders_from(bullet)
         self.collision_builder.add_tile_colliders(tiles, season)
         self.collision_builder.add_safe_spaces(map_size)
         self.cTrav, self.pusher = self.collision_builder.get_collision_system()

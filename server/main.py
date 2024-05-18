@@ -161,7 +161,8 @@ class Server(ShowBase, ServerGame):
 
     def build_collisions(self):
         self.collision_builder.add_colliders_from(self.flag)
-        self.collision_builder.add_colliders_from(self.bullet_factory.bullets)
+        for bullet in self.bullet_factory.bullets:
+            self.collision_builder.add_colliders_from(bullet)
         self.collision_builder.add_tile_colliders(self.tiles, self.season)
         self.collision_builder.add_safe_spaces(MAP_SIZE)
         self.cTrav, self.pusher = self.collision_builder.get_collision_system()
