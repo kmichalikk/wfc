@@ -333,7 +333,7 @@ class GameManager:
             self.collision_builder.add_colliders_from(bullet)
         self.collision_builder.add_tile_colliders(tiles, season)
         self.collision_builder.add_safe_spaces(map_size)
-        self.cTrav, self.pusher = self.collision_builder.get_collision_system()
+        self.game.cTrav, self.game.pusher = self.collision_builder.get_collision_system()
 
         def update_camera(task):
             if self.main_player is None:
