@@ -3,14 +3,13 @@ from panda3d.core import NodePath
 from common.collision.collision_object import CollisionObject
 from common.collision.safe_space import SafeSpace
 from common.tiles.tile_controller import create_new_tile, get_collision_shapes
+from common.typings import SupportsCollisionRegistration
 
 
-class CollisionManager:
-    def __init__(self, render, loader, flag_collider, bullet_factory):
+class CollisionBuilder:
+    def __init__(self, render, loader):
         self.render = render
         self.loader = loader
-        self.flag_collider = flag_collider
-        self.bullet_factory = bullet_factory
         self.cTrav = p3d.CollisionTraverser()
         self.pusher = p3d.CollisionHandlerPusher()
         self.pusher.setHorizontal(True)
@@ -18,22 +17,19 @@ class CollisionManager:
         self.__tile_colliders = []
         self.__safe_spaces = []
 
-    def setup_collisions(self, tiles, map_size, season):
-        self.__setup_traverser()
-        self.__setup_safe_spaces(map_size)
-        self.__setup_tile_colliders(tiles, season)
+    def add_collisions(self, tiles, map_size, season, flag, bullets):
+        self.add_colliders_from(flag)
+        for bullet in bullets:
+            self.add_colliders_from(bullet)
+        self.__create_safe_spaces(map_size)
+        self.__create_tile_colliders(tiles, season)
         return self.cTrav, self.pusher
 
-    def __setup_traverser(self):
-        self.cTrav.add_collider(self.flag_collider, self.pusher)
-        for bullet in self.bullet_factory.bullets:
-            self.cTrav.add_collider(bullet.colliders[0], self.pusher)
-
-    def __setup_safe_spaces(self, map_size):
+    def __create_safe_spaces(self, map_size):
         for i in range(4):
             self.__safe_spaces.append(SafeSpace(self.render, i, map_size, self.loader))
 
-    def __setup_tile_colliders(self, tiles, season):
+    def __create_tile_colliders(self, tiles, season):
         tiles_parent = NodePath("tiles")
         for tile_data in tiles:
             tile = create_new_tile(self.loader, tile_data["node_path"], tile_data["pos"], tile_data["heading"], season)
@@ -48,11 +44,12 @@ class CollisionManager:
         tiles_parent.flatten_strong()
         tiles_parent.reparent_to(self.render)
 
-    def setup_player_collision(self, player_collider, view=0):
-        self.cTrav.add_collider(player_collider, self.pusher)
-        self.pusher.add_collider(player_collider, player_collider)
-        if view:
-            player_collider.show()
+    def add_colliders_from(self, obj: SupportsCollisionRegistration, view=False):
+        for collider in obj.get_colliders():
+            self.cTrav.add_collider(collider, self.pusher)
+            self.pusher.add_collider(collider, collider)
+            if view:
+                collider.show()
 
     def get_tile_colliders(self):
         return self.__tile_colliders

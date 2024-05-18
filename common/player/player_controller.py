@@ -9,9 +9,10 @@ from common.config import BULLET_ENERGY, BOLT_ENERGY
 from common.objects.cloud_factory import CloudFactory
 from common.state.player_state_diff import PlayerStateDiff
 from common.typings import Input, TimeStep
+from common.typings import SupportsCollisionRegistration
 
 
-class PlayerController(CollisionObject):
+class PlayerController(CollisionObject, SupportsCollisionRegistration):
     COLLISION_RADIUS = 0.3
 
     def __init__(self, model: p3d.NodePath, player_state: PlayerStateDiff, ghost=False):
@@ -119,3 +120,6 @@ class PlayerController(CollisionObject):
     def update_time_step(self):
         self.state.step = TimeStep(self.state.step.begin, time.time())
         self.state.motion_state.step = TimeStep(self.state.motion_state.step.begin, time.time())
+
+    def get_colliders(self) -> list[CollisionObject]:
+        return self.colliders

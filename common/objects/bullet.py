@@ -4,9 +4,10 @@ from common.collision.collision_object import CollisionObject
 import panda3d.core as p3d
 
 from common.typings import BulletMetadata
+from common.typings import SupportsCollisionRegistration
 
 
-class Bullet(CollisionObject):
+class Bullet(CollisionObject, SupportsCollisionRegistration):
     def __init__(self, parent: p3d.NodePath, position: p3d.Vec3, direction: p3d.Vec3, owner_id: str, bullet_id: int,
                  timestamp: int):
         collision_sphere = p3d.CollisionSphere(0, 0, 0, 0.15)
@@ -37,3 +38,6 @@ class Bullet(CollisionObject):
         self.position.set_x(self.position.get_x() + self.direction.get_x() * self.velocity * dt)
         self.position.set_y(self.position.get_y() + self.direction.get_y() * self.velocity * dt)
         self.colliders[0].set_pos(self.position)
+
+    def get_colliders(self) -> list[CollisionObject]:
+        return self.colliders

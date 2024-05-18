@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Protocol, Union
+from typing import Protocol
 
 from common.objects.bullet import Bullet
 from common.player.player_controller import PlayerController

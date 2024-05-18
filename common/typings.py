@@ -1,6 +1,8 @@
 from abc import abstractmethod
 from enum import IntEnum, auto, StrEnum
-from typing import Literal, Protocol, TypeVar, NamedTuple, Union, Any
+from typing import Literal, Protocol, TypeVar, NamedTuple, Union
+
+from common.collision.collision_object import CollisionObject
 
 Direction = Literal["n", "e", "s", "w"]
 
@@ -87,4 +89,10 @@ class SupportsDiff(Protocol):
 
     @abstractmethod
     def apply(self, other: 'SD'):
+        raise NotImplementedError()
+
+
+class SupportsCollisionRegistration(Protocol):
+    @abstractmethod
+    def get_colliders(self) -> list[CollisionObject]:
         raise NotImplementedError()

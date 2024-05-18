@@ -4,9 +4,10 @@ from panda3d.core import Vec3, CollisionSphere
 from common.collision.collision_object import CollisionObject
 from common.config import MAP_SIZE
 from common.player.player_controller import PlayerController
+from common.typings import SupportsCollisionRegistration
 
 
-class Flag(CollisionObject):
+class Flag(CollisionObject, SupportsCollisionRegistration):
     def __init__(self, game, player=None):
         self.player: Union[PlayerController, None] = player
         self.position = Vec3(MAP_SIZE - 2, MAP_SIZE - 2, 0)
@@ -36,3 +37,6 @@ class Flag(CollisionObject):
         self.model.wrtReparentTo(player.model.parent)
         self.model.setPos(player.model, 1, 1, 0)
         player.state.drop_flag()
+
+    def get_colliders(self) -> list[CollisionObject]:
+        return self.colliders
