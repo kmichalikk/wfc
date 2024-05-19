@@ -34,8 +34,8 @@ class Client:
         self.__connection_manager = connection_manager
         self.__connection_manager.on(Messages.GLOBAL_STATE, self.__game_state_change)
         self.__connection_manager.on(Messages.GAME_END, self.__game_end_handler)
-        self.__connection_manager.on(Messages.BOLTS_SETUP, self.__game.setup_bolts)
-        self.__connection_manager.on(Messages.BOLTS_UPDATE, self.__game.update_bolts)
+        self.__connection_manager.on(Messages.BOLTS_SETUP, self.__game_manager.setup_bolts)
+        self.__connection_manager.on(Messages.BOLTS_UPDATE, self.__game_manager.update_bolts)
         self.__connection_manager.on(Messages.RESUME_PLAYER, self.__game_manager.resume_player)
         self.__connection_manager.on(Messages.PLAYER_PICKED_FLAG, self.__game_manager.player_flag_pickup)
         self.__connection_manager.on(Messages.PLAYER_DROPPED_FLAG, self.__game_manager.player_flag_drop)
@@ -99,12 +99,12 @@ class Client:
         taskMgr.do_method_later(0, lambda _: self.__connection_manager.send_flag_drop_trigger(player_id),
                                 "send input on next frame")
 
-    def __handle_input(self, input: Input):
-        self.__game_manager.main_player.update_input(input)
+    def __handle_input(self, inp: Input):
+        self.__game_manager.update_input(inp)
         # send input to server on next frame in order to give ourselves a change
         # to respond to input before server sees it
         # otherwise, we would get server response on localhost before we'd processed it locally
-        taskMgr.do_method_later(0, lambda _: self.__connection_manager.send_input_update(input),
+        taskMgr.do_method_later(0, lambda _: self.__connection_manager.send_input_update(inp),
                                 "send input on next frame")
 
     def __game_end_handler(self, winner_id, winner_username, wins, losses):
