@@ -20,11 +20,6 @@ class BulletFactory:
 
         self.id = 0
 
-    def register_colliders(self, pusher):
-        for bullet in self.bullets:
-            pusher.add_collider(bullet)
-        return [b.collision_node for b in self.bullets]
-
     def get_one(self, position, direction, owner_id):
         bullet = self.bullets[self.id]
         self.id = (self.id + 1) % self.COUNT

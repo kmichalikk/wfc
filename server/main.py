@@ -165,7 +165,7 @@ class Server(ShowBase, ServerGame):
             self.collision_builder.add_colliders_from(bullet)
         self.collision_builder.add_tile_colliders(self.tiles, self.season)
         self.collision_builder.add_safe_spaces(MAP_SIZE)
-        self.cTrav, self.pusher = self.collision_builder.get_collision_system()
+        self.cTrav = self.collision_builder.get_collision_system()
 
     def __update_bullets(self, task):
         if self.game_won_by is not None:

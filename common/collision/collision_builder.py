@@ -18,7 +18,7 @@ class CollisionBuilder:
         self.__safe_spaces = []
 
     def get_collision_system(self):
-        return self.cTrav, self.pusher
+        return self.cTrav
 
     def add_safe_spaces(self, map_size):
         for i in range(4):

@@ -1,6 +1,7 @@
 from typing import Union
 from panda3d.core import Vec3, CollisionSphere
 
+from direct.showbase.ShowBase import ShowBase
 from common.collision.collision_object import CollisionObject
 from common.config import MAP_SIZE
 from common.player.player_controller import PlayerController
@@ -8,7 +9,7 @@ from common.typings import SupportsCollisionRegistration
 
 
 class Flag(CollisionObject, SupportsCollisionRegistration):
-    def __init__(self, game, player=None):
+    def __init__(self, game: ShowBase, player=None):
         self.player: Union[PlayerController, None] = player
         self.position = Vec3(MAP_SIZE - 2, MAP_SIZE - 2, 0)
         self.model = game.loader.load_model("../common/assets/models/flag.glb")
