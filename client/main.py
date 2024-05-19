@@ -57,6 +57,7 @@ class Client:
     def __ready_handler(self, game_config: GameConfig):
         self.__expected_players = game_config.expected_players
         self.login_screen.hide()
+        print(game_config.size)
         self.__game_manager.setup_map(game_config.tiles, game_config.size, game_config.season)
         for state in game_config.player_states:
             player = self.__game_manager.setup_player(state)

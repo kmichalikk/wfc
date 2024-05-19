@@ -160,6 +160,8 @@ class ConnectionManager(DirectObject):
 
     def __handle_room_found(self, transfer: NetworkTransfer):
         print("[INFO] Room found")
+        if self.__room_found:
+            return
         game_config = GameConfig.empty()
         game_config.restore(transfer)
         self.__ready_handler(game_config)

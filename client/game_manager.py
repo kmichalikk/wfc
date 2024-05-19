@@ -9,7 +9,6 @@ from client.connection.connection_manager import ConnectionManager
 from client.game import Game
 from client.screens.player_stats import PlayerStats
 from common.config import MAP_SIZE, BULLET_ENERGY, TIME_STEP
-from common.collision.collision_builder import CollisionBuilder
 from common.objects.bolt_factory import BoltFactory
 from common.objects.bullet import Bullet
 from common.objects.bullet_factory import BulletFactory
@@ -56,6 +55,7 @@ class GameManager:
         self.__other_players_delay = 2 * TIME_STEP
 
         self.__game = game
+        self.__loader = self.__game.get_loader()
 
         self.__bullet_factory = BulletFactory(self.__game.get_render())
         self.__bullets: list[Bullet] = []
@@ -63,24 +63,22 @@ class GameManager:
         self.__flag = Flag(self.__game)
 
         self.__bolts_set_up = False
-        self.__bolt_factory = BoltFactory(self.__game.get_loader(), self.__game.get_render())
+        self.__bolt_factory = BoltFactory(self.__loader, self.__game.get_render())
 
         self.__game_has_started = False
         self.__node_path_factory = node_path_factory
         self.__connection_manager = connection_manager
         self.__sync_tasks: dict[str, Task] = {}
 
-        self.__collision_builder = CollisionBuilder(self.__game.get_render(), self.__game.get_loader())
-
     def setup_player(self, player_state: PlayerStateDiff):
         player_node_path = self.__node_path_factory.get_player_model(player_state.id)
-        player_node_path.reparent_to(self.__game.render)
+        player_node_path.reparent_to(self.__game.get_render())
         player = PlayerController(
             player_node_path,
             player_state,
         )
         player.sync_position()
-        player.set_cloud_factory(CloudFactory(self.__game.loader, self.__game.render))
+        player.set_cloud_factory(CloudFactory(self.__loader, self.__game.get_render()))
         self.__game.taskMgr.do_method_later(0.05, player.task_emit_cloud, 'emit cloud')
 
         self.__game_state.player_state[player_state.id] = player_state
@@ -116,7 +114,7 @@ class GameManager:
         for i in range(0, MAP_SIZE // 2):
             self.__game.accept('player' + player.get_id() + '-into-bolt' + str(i), self.__request_bolt_pickup)
 
-        self.__collision_builder.add_colliders_from(self.__main_player)
+        self.__game.add_colliders_from(self.__main_player)
 
         # add another controller for the player that doesn't directly respond to input
         # but is set to server state as it arrives i.e. every 3 frames and updated afterward
@@ -124,7 +122,7 @@ class GameManager:
         # can be linearly interpolated to present smooth motion
         # while being "mostly" correct compared to server version
         model = self.__node_path_factory.get_player_model(player.get_id())
-        model.reparent_to(self.__game.render)
+        model.reparent_to(self.__game.get_render())
         self.__main_player_server_view = PlayerController(
             model,
             player.state.clone(),
@@ -133,7 +131,7 @@ class GameManager:
         self.__main_player_server_view.sync_position()
 
         # show UI
-        self.player_stats = PlayerStats(self.__game.loader, player.get_id())
+        self.player_stats = PlayerStats(self.__loader, player.get_id())
         self.player_stats.display()
         self.player_stats.set_energy(10)
 
@@ -347,12 +345,12 @@ class GameManager:
             self.__bullets.append(bullet)
 
     def setup_map(self, tiles, map_size, season):
-        self.__collision_builder.add_colliders_from(self.__flag)
+        self.__game.add_colliders_from(self.__flag)
         for bullet in self.__bullet_factory.bullets:
-            self.__collision_builder.add_colliders_from(bullet)
-        self.__collision_builder.add_tile_colliders(tiles, season)
-        self.__collision_builder.add_safe_spaces(map_size)
-        self.__game.cTrav, self.__game.pusher = self.__collision_builder.get_collision_system()
+            self.__game.add_colliders_from(bullet)
+
+        self.__game.setup_map(tiles, map_size, season)
+        self.__game.update_collision_system()
 
         def update_camera(task):
             if self.__main_player is None:
@@ -362,8 +360,3 @@ class GameManager:
             return task.cont
 
         taskMgr.add(update_camera, "update camera")
-
-        for tile_data in tiles:
-            tile = create_new_tile(self.__game.get_loader(), tile_data["node_path"], tile_data["pos"],
-                                   tile_data["heading"], season)
-            tile.reparent_to(self.__game.get_render())

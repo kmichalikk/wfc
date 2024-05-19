@@ -4,8 +4,8 @@ from direct.showbase.ShowBaseGlobal import aspect2d
 import panda3d.core as p3d
 import simplepbr
 
-from common.objects.bolt_factory import BoltFactory
-from common.typings import Input
+from common.collision.collision_builder import CollisionBuilder
+from common.typings import Input, SupportsCollisionRegistration
 
 
 class Game(ShowBase):
@@ -30,6 +30,18 @@ class Game(ShowBase):
         point_light_node2 = self.render.attach_new_node(ambient)
         self.render.set_light(point_light_node1)
         self.render.set_light(point_light_node2)
+
+        self.__collision_builder = CollisionBuilder(self.get_render(), self.get_loader())
+
+    def add_colliders_from(self, obj: SupportsCollisionRegistration):
+        self.__collision_builder.add_colliders_from(obj)
+
+    def setup_map(self, tiles, map_size, season):
+        self.__collision_builder.add_tile_colliders(tiles, season)
+        self.__collision_builder.add_safe_spaces(map_size)
+
+    def update_collision_system(self):
+        self.cTrav = self.__collision_builder.get_collision_system()
 
     def set_input_handler(self, input_handler: Callable[[Input], None]):
         self.accept("w", lambda: input_handler(Input("+forward")))
