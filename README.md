@@ -10,6 +10,8 @@ This project was developed for the **Programming in Python** course as part of t
 - **Database Integration** – Uses databases to store and track player performance and game results.
 - **Semester-long Development** – The project was developed over the course of the entire semester, with bi-weekly progress reviews and adherence to an initial project plan.
 
+![Project Info Card](common/project_info_card.png)
+
 ## Setup Instructions ##
 
 To run the game, follow these steps:
